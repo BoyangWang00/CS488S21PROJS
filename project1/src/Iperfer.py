@@ -27,7 +27,6 @@ def iperf_client(sys_argv):
         while 1:
             s.sendall(data_chunk)
             chunk_counter += 1
-
             if time.time() > timeout:
                 s.sendall(b'1')
                 print("time is out")
@@ -62,6 +61,7 @@ def iperf_server(sys_argv):
                 time_start = time.time()
                 while True:
                     data = conn.recv(1000)
+                    # print(data.decode())
                     chunk_counter += 1
                     #print("server received data")
                     data = data.upper()
