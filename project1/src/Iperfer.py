@@ -24,21 +24,19 @@ def iperf_client(sys_argv):
         s.connect((HOST, PORT))
         data_chunk = bytearray(1000)
         timeout = time.time() + s_time
-        while (1):
+        while 1:
             s.sendall(data_chunk)
             chunk_counter += 1
-            # print(chunk_counter)
-            data = s.recv(1000)
+
             if time.time() > timeout:
                 s.sendall(b'1')
-                # print(time.time())
                 print("time is out")
                 break
+
         s.close()
         print(chunk_counter, "chunks are sent")
         rate = chunk_counter/1000/s_time
     print('sent={0} KB rate={1} Mbps'. format(str(chunk_counter), str(rate)))
-    return
     #print('Received', repr(data))
 
 
@@ -74,7 +72,6 @@ def iperf_server(sys_argv):
                         print('received={0} KB rate={1} Mbps'. format(
                             str(chunk_counter), str(rate)))
                         return
-                    conn.sendall(data)
 
 
 sys_argv = sys.argv
