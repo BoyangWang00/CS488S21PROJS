@@ -27,7 +27,7 @@ def iperf_client(sys_argv):
             s.sendall(data_chunk)
             chunk_counter += 1
             #print(chunk_counter)
-            data = s.recv(1000)
+            #data = s.recv(1000)
             if time.time() > timeout:
                 s.sendall(b'1')
                 #print(time.time())
@@ -62,6 +62,7 @@ def iperf_server(sys_argv):
                 time_start = time.time()
                 while True:
                     data = conn.recv(1000)
+                    #print(data.decode())
                     chunk_counter += 1
                     #print("server received data")
                     data=data.upper()
@@ -71,7 +72,8 @@ def iperf_server(sys_argv):
                         print('time passed' , (time_end-time_start))
                         print('received={0} KB rate={1} Mbps'. format(str(chunk_counter), str(rate)))
                         return
-                    conn.sendall(data)
+
+#BOYANG IS HERE!!! Change return   
 
 
 sys_argv = sys.argv
