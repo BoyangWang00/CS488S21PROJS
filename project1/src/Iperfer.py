@@ -29,7 +29,7 @@ def iperf_client(sys_argv):
             chunk_counter += 1
         s.sendall(b'1')
         #print(chunk_counter, "chunks are sent")
-    rate = chunk_counter/1000/s_time*8
+    rate = round(chunk_counter/1000/s_time*8,3)
     print('sent={0} KB rate={1} Mbps'. format(str(chunk_counter), str(rate)))
     #print('Received', repr(data))
 
@@ -63,7 +63,7 @@ def iperf_server(sys_argv):
                 byte_counter += len(data)
                 #print("server received data")
             time_end = time.time()
-            rate = byte_counter/1_000_000/(time_end-time_start)*8
+            rate = round(byte_counter/1_000_000/(time_end-time_start)*8,3)
             #print('time passed', (time_end-time_start))
             print('received={0} KB rate={1} Mbps'. format(
                 str(byte_counter/1000), str(rate)))
