@@ -64,9 +64,10 @@ def iperf_server(sys_argv):
                 #print("server received data")
             time_end = time.time()
             rate = round(byte_counter/1_000_000/(time_end-time_start)*8,3)
+            received = round(byte_counter/1000)
             #print('time passed', (time_end-time_start))
             print('received={0} KB rate={1} Mbps'. format(
-                str(round(byte_counter/1000)), str(rate)))
+                str(received), str(rate)))
 
 
 sys_argv = sys.argv
