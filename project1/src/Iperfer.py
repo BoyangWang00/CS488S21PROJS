@@ -4,13 +4,19 @@ import time
 
 
 def iperf_client(sys_argv):
-    if(len(sys_argv) != 4):
-        print("Error: missing or additional arguments")
+    print("argv length = ", len(sys_argv))
+    if(len(sys_argv) < 4):
+        print("Error: missing or additional arguments (less than 4)")
+        quit()
+
+    if(len(sys_argv) > 4):
+        print("Error: missing or additional arguments (greater than 4)")
         quit()
 
     if(int(sys_argv[2]) < 1024 or int(sys_argv[2]) > 65535):
         print("Error: port number must be in the range 1024 to 65535")
         quit()
+
 
     #print('Argument List:', str(sys_argv))
 
@@ -63,12 +69,11 @@ def iperf_server(sys_argv):
                 byte_counter += len(data)
                 #print("server received data")
             time_end = time.time()
+
             rate = round(byte_counter/1_000_000/(time_end-time_start)*8,3)
-            received = round(byte_counter/1000)
             #print('time passed', (time_end-time_start))
             print('received={0} KB rate={1} Mbps'. format(
-                str(received), str(rate)))
-
+                str(round(byte_counter/1000)), str(rate)))
 
 sys_argv = sys.argv
 
