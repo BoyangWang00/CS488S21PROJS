@@ -6,11 +6,11 @@ import time
 def iperf_client(sys_argv):
     if(len(sys_argv) != 4):
         print("Error: missing or additional arguments")
-        sys.exit()
+        sys.exit(1)
 
     if(int(sys_argv[2]) < 1024 or int(sys_argv[2]) > 65535):
         print("Error: port number must be in the range 1024 to 65535")
-        sys.exit()
+        sys.exit(1)
 
     #print('Argument List:', str(sys_argv))
 
@@ -37,10 +37,10 @@ def iperf_client(sys_argv):
 def iperf_server(sys_argv):
     if(len(sys_argv) != 3):
         print("Error: missing or additional arguments")
-        sys.exit()
+        sys.exit(1)
     if(int(sys_argv[2]) < 1024 or int(sys_argv[2]) > 65535):
         print("Error: port number must be in the range 1024 to 65535")
-        sys.exit()
+        sys.exit(1)
     # Symbolic name meaning all available interfaces
     HOST = ''
     PORT = int(sys_argv[2])
