@@ -4,13 +4,19 @@ import time
 
 
 def iperf_client(sys_argv):
-    if(len(sys_argv) != 4):
-        print("Error: missing or additional arguments")
+    print("argv length = ", len(sys_argv))
+    if(len(sys_argv) < 4):
+        print("Error: missing or additional arguments (less than 4)")
+        quit()
+
+    if(len(sys_argv) > 4):
+        print("Error: missing or additional arguments (greater than 4)")
         quit()
 
     if(int(sys_argv[2]) < 1024 or int(sys_argv[2]) > 65535):
         print("Error: port number must be in the range 1024 to 65535")
         quit()
+
 
     #print('Argument List:', str(sys_argv))
 
@@ -29,7 +35,7 @@ def iperf_client(sys_argv):
             chunk_counter += 1
         s.sendall(b'1')
         #print(chunk_counter, "chunks are sent")
-    rate = chunk_counter/1000/s_time*8
+    rate = round(chunk_counter/1000/s_time*8,3)
     print('sent={0} KB rate={1} Mbps'. format(str(chunk_counter), str(rate)))
     #print('Received', repr(data))
 
@@ -63,10 +69,11 @@ def iperf_server(sys_argv):
                 byte_counter += len(data)
                 #print("server received data")
             time_end = time.time()
-            rate = byte_counter/1_000_000/(time_end-time_start)*8
+
+            rate = round(byte_counter/1_000_000/(time_end-time_start)*8,3)
             #print('time passed', (time_end-time_start))
             print('received={0} KB rate={1} Mbps'. format(
-                str(byte_counter/1000), str(rate)))
+                str(round(byte_counter/1000)), str(rate)))
 
 
 sys_argv = sys.argv
