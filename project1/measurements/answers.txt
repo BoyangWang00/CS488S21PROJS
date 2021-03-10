@@ -1,3 +1,28 @@
-Q2:
- Latenct: L1+L2+L3
- 
+Q2) Add the round trip time of L1, L2, and L3 for the latency from h1 to h4.
+    (40 * 2 + 10 * 2 + 30 * 2) = 160 ms
+    
+    The throughput between h1 and h4 would be limited by the throughput of L1 (20 Mbps).
+    
+Q3) The latency of two pairs of hosts communicating through the same links would be double
+    the latency of just one pair of hosts.
+    Ex. L1-L2-L3  double latency = 160 * 2 = 320 ms
+    
+    Or, the latency might remain the same due to the switches maintaining the two or more       communications simultaneously between mutiple pairs.
+    
+    The throughput between two pairs of hosts communicating through the same links would either be half the normal throughput between one pair
+    of hosts or remain the same because the switches have the compacity to maintain multiple communications simultaneously.
+
+Q4) The throughput between h1 and h4 at max would be 20 Mbps due to the limiting bandwidth
+    of L1. Meanwhile, the throughput betwee h5 and h6 at max would be 25 Mbps due to the
+    identical bandwidth of L4 and L5.
+    Therefore, the max throughput while the two pairs of
+    hosts communicate simultaneously would be 45 Mbps (20 + 25 Mbps), and there would be a
+    5 Mbps data loss total.
+    
+    The latency between the two pairs of hosts might remains the same:
+    h1-h4: 160 ms
+    h5-h6: (10 + 20 + 10 =) 40 ms
+    
+    Or, if the latency of L2 does change due to the pairs of hosts sharing it, L2 latency
+    would be doubled from 20 ms to 40 ms. Therefore, an overall changed latency would be
+    equal would 180 ms between h1-h4 and 60 ms between h5-h6.
