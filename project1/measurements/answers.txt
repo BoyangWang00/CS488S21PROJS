@@ -1,3 +1,73 @@
-Q2:
- Latenct: L1+L2+L3
- 
+Q2) Prediction: Add the round trip time of L1, L2, and L3 for the latency from h1 to h4.
+    (40 * 2 + 10 * 2 + 30 * 2) = 160 ms
+    
+    The throughput between h1 and h4 would be limited by the throughput of L1 (20 Mbps).
+    
+    Result:
+    rtt avg = 171.619 ms
+    rate=21.583 Mbps
+    
+    
+Q3) 
+    Prediction:
+    The latency of two pairs of hosts communicating through the same links would be double
+    the latency of just one pair of hosts.
+    Ex. L1-L2-L3  double latency = 160 * 2 = 320 ms
+    
+    Or, the latency might remain the same due to the switches maintaining the two or more communications simultaneously between mutiple pairs.
+    
+    The throughput between two to three pairs of hosts communicating simultaneously through the same links would slow down because the throughput will be split
+    depending on number of hosts.
+    
+    Result:
+    ---2 pairs of hosts----
+    Latency
+    h1-h4: rtt= 171.369 ms
+    h7-h8: rtt= 171.335 ms
+    
+    Throughput
+    h1-h4: rate=12.956 Mbps
+    h7-h8: rate=9.962 Mbps
+    
+    ---3 pairs of hosts---
+    Latency
+    h1-h4: rtt= 170.406 ms
+    h7-h8: rtt= 170.811 ms
+    h9-h10: rtt= 169.937 ms
+    
+    Throughput
+    h1-h4: rate=6.124 Mbps
+    h7-h8: rate=12.004 Mbps
+    h9-h10: rate=11.137 Mbps
+    
+    Explanation: Connection speeds slows down due to two pairs of hosts communicating. The total throughput gets split according to number of hosts communicating
+    simultaneously. But latency should remain the same because the connection between the two hosts remains the same regardless.
+    
+
+Q4) Prediction:
+    The latency between the two pairs of hosts might remains the same:
+    h1-h4: 160 ms
+    h5-h6: 10 + 20 + 10 = 40 ms
+    
+    The throughput between h1 and h4 at max would be 20 Mbps due to the limiting bandwidth
+    of L1. Meanwhile, the throughput betwee h5 and h6 at max would be 25 Mbps due to the
+    identical bandwidth of L4 and L5.
+    Therefore, the max throughput while the two pairs of
+    hosts communicate simultaneously would be 45 Mbps (20 + 25 Mbps), and there would be a
+    5 Mbps data loss total.
+    
+    Results:
+    Latency
+    h1-h4: rtt= 173.491 ms
+    h5-h6: rtt= 57.604 ms
+    
+    Throughput:
+    h1-h4: rate= 13.34 Mbps
+    h5-h6: rate= 20.609 Mbps
+    
+    Explanation:
+    Latency just as we expected, the same.
+    Throughput slows down since both pairs of hosts are trying to send packets between them simultaneously through the same port and end up throttling the
+    link connections between the hosts.
+    
+    
