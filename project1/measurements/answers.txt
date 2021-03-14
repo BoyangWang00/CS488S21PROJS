@@ -26,8 +26,8 @@ Q3)
     h7-h8: rtt= 171.335 ms
     
     Throughput
-    h1-h4: rate=12.956 Mbps
-    h7-h8: rate=9.962 Mbps
+    h1-h4: rate=8.822 Mbps
+    h7-h8: rate=6.327 Mbps
     
     ---3 pairs of hosts---
     Latency
@@ -36,9 +36,9 @@ Q3)
     h9-h10: rtt= 169.937 ms
     
     Throughput
-    h1-h4: rate=6.124 Mbps
-    h7-h8: rate=12.004 Mbps
-    h9-h10: rate=11.137 Mbps
+    h1-h4: rate=11.031 Mbps
+    h7-h8: rate=12.735 Mbps
+    h9-h10: rate=8.22 Mbps
     
     Explanation: Connection speeds slows down due to two pairs of hosts communicating. The total throughput gets split according to number of hosts communicating
     simultaneously. But latency should remain the same because the connection between the two hosts remains the same regardless.
@@ -62,8 +62,8 @@ Q4) Prediction:
     h5-h6: rtt= 57.604 ms
     
     Throughput:
-    h1-h4: rate= 13.34 Mbps
-    h5-h6: rate= 20.609 Mbps
+    h1-h4: rate=12.508 Mbps
+    h5-h6: rate=19.31 Mbps
     
     Explanation:
     Latency just as we expected, the same.
