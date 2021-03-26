@@ -12,7 +12,7 @@ s = socket(AF_INET,SOCK_DGRAM)
 s.bind((host,port))
 
 addr = (host,port)
-buf=1024
+buf=1400
 
 f = open("received.txt",'wb')
 
