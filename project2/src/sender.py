@@ -51,7 +51,7 @@ while True:
             #resned the packet
             s.sendto(b_data.encode(),addr)
             print("send again b/c packet lost")
-    if not b_data:    # the last read will be less than 1400; we jump out of the loop
+    if not data:    # the last read will be less than 1400; we jump out of the loop
         print("Send finished")
         end_time = time.time()
         break
