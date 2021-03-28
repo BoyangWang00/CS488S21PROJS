@@ -23,7 +23,7 @@ counter = 0
 while True:
   try:
     data,addr = s.recvfrom(buf)
-    data_json = json.loads(data)
+    data_json = json.loads(data) #deserialize json obj into python dict 
 
     [(header, data)] = list(data_json.items())
 
@@ -36,12 +36,12 @@ while True:
         s.sendto(str(counter).encode(),addr)
 
     f.write(data.encode()) #send to app
-    s.settimeout(10)
+    s.settimeout(2)
 
     if not data:
         break
   except timeout:
     print("time out")
-    f.close()
-    s.close()
-    print("File Downloaded")
+f.close()
+s.close()
+print("File Downloaded, exiting.")
