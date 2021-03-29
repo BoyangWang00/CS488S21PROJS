@@ -35,22 +35,24 @@ while True:
         total_data += len(b_data)
         print("{} bytes have been sent ...".format(total_data))
         try:
-            s.settimeout(2)
+            s.settimeout(5)
             #receive AKC
             akc_data,addr = s.recvfrom(4)
             print("ack # is {}".format(akc_data))
+
+            if int(akc_data) == header_index +1:
+                header_index +=1
+                continue
+            else:
+                #resned the packet
+                s.sendto(b_data.encode(),addr)
+                print("send again b/c packet lost")
 
         except timeout:
             #resend the packet
             s.sendto(b_data.encode(),addr)
             print("send again b/c time out")
-        if int(akc_data) == header_index +1:
-            header_index +=1
-            continue
-        else:
-            #resned the packet
-            s.sendto(b_data.encode(),addr)
-            print("send again b/c packet lost")
+
     if not data:    # the last read will be less than 1400; we jump out of the loop
         print("Send finished")
         end_time = time.time()

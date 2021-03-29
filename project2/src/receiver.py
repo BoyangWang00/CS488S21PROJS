@@ -31,7 +31,7 @@ while True:
     print(type(header))
 
     if int(header) == counter:
-        counter += 1
+        counter = int(header) +1
         print("send counter", counter)
         s.sendto(str(counter).encode(),addr)
 
