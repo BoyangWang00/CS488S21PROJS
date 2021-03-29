@@ -31,9 +31,9 @@ while True:
             counter += 1
             #print("send counter", counter)
             s.sendto(str(counter).encode(), addr)
-
-        #f.write(data.encode())  # send to app
-        sys.stdout.write(data)
+            sys.stdout.write(data)
+        else:
+            s.sendto(str(counter).encode(), addr)
         s.settimeout(2)
 
         if not data:

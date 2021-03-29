@@ -27,7 +27,7 @@ while True:
             print("Send finished")
             end_time = time.time()
             break
-        #print("current data is",data, "type is ", type(data))
+        print("current data is type is ", type(data))
         #b_data = data.encode()
         b_data = json.dumps({header_index: data})
 
@@ -39,25 +39,26 @@ while True:
         # stop and wait the AKC for last packet
     s.sendto(b_data.encode(), addr)  # send regular packet
     total_data += len(b_data)
-    #print("{} bytes have been sent ...".format(total_data))
+    print("{} bytes have been sent ...".format(total_data))
     while True:
         try:
             # receive AKC
             akc_data, addr = s.recvfrom(100)
 
-            #print("akc # is {}".format(akc_data))
+            print("akc # is {}".format(akc_data))
 
-            while (int(akc_data !=header_index +1)):
+            while (int(akc_data) !=header_index +1):
                 s.sendto(b_data.encode(),addr)
                 print("send again b/c packet lost")
                 akc_data, addr = s.recvfrom(100)
 
             header_index += 1
+            break
 
         except timeout:
             # resend the packet
             s.sendto(b_data.encode(), addr)
-            #print("send again b/c time out")
+            print("send again b/c time out")
 
 s.close()
 
