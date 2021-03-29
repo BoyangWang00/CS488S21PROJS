@@ -15,9 +15,6 @@ s.bind((host, port))
 addr = (host, port)
 buf = 2800
 
-#f = open("received.txt", 'wb')
-# data, addr = s.recvfrom(buf)
-
 counter = 0
 
 while True:
@@ -43,7 +40,5 @@ while True:
             break
     except timeout:
         #print("time out")
-        break
-#f.close()
+        exit(2)
 s.close()
-#print("File Downloaded, exiting.")
