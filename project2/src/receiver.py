@@ -27,12 +27,12 @@ while True:
 
         [(header, data)] = list(data_json.items())
 
-        print("header we received is {}".format(header))
-        print(type(header))
+        #print("header we received is {}".format(header))
+        #print(type(header))
 
         if int(header) == counter:
             counter += 1
-            print("send counter", counter)
+            #print("send counter", counter)
             s.sendto(str(counter).encode(), addr)
 
         f.write(data.encode())  # send to app
@@ -41,7 +41,7 @@ while True:
         if not data:
             break
     except timeout:
-        print("time out")
+        #print("time out")
         break
 f.close()
 s.close()

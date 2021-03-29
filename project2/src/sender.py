@@ -22,6 +22,7 @@ akc_data = 0
 while True:
     try:
         data = sys.stdin.read(buf)
+        #print("current data is",data, "type is ", type(data))
         #b_data = data.encode()
         b_data = json.dumps({header_index: data})
 
@@ -33,33 +34,39 @@ while True:
         # stop and wait the AKC for last packet
     if(s.sendto(b_data.encode(), addr)):  # send regular packet
         total_data += len(b_data)
-        print("{} bytes have been sent ...".format(total_data))
+        #print("{} bytes have been sent ...".format(total_data))
         try:
+
+            if data == '':    # when we reach EOF
+                print("Send finished")
+                end_time = time.time()
+                b_data = "-1"
+                s.sendto(b_data.encode(), addr)
+                break
+
             s.settimeout(2)
             # receive AKC
-            akc_data, addr = s.recvfrom(5)
-            print("ack # is {}".format(akc_data))
+            akc_data, addr = s.recvfrom(100)
+
+            #print("akc # is {}".format(akc_data))
 
         except timeout:
             # resend the packet
             s.sendto(b_data.encode(), addr)
-            print("send again b/c time out")
-        if int(akc_data) == header_index + 1:
+            #print("send again b/c time out")
+
+        if int(akc_data)== header_index + 1:
+            #print("akc is ", int(akc_data))
             header_index += 1
             continue
         else:
             # resned the packet
             s.sendto(b_data.encode(), addr)
-            print("send again b/c packet lost")
+            #print("send again b/c packet lost")
     else:
-        print("failed to send data")
+        #print("failed to send data")
         break
-    if not data:    # the last read will be less than 1400; we jump out of the loop
-        print("Send finished")
-        end_time = time.time()
-        b_data = "-1"
-        s.sendto(b_data.encode(), addr)
-        break
+
 
 time = (end_time - start_time)
 if time == 0:
