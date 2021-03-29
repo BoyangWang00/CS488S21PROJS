@@ -15,7 +15,7 @@ s.bind((host, port))
 addr = (host, port)
 buf = 2800
 
-f = open("received.txt", 'wb')
+#f = open("received.txt", 'wb')
 # data, addr = s.recvfrom(buf)
 
 counter = 0
@@ -27,7 +27,7 @@ while True:
 
         [(header, data)] = list(data_json.items())
 
-        #print("header we received is {}".format(header))
+        #print("header wereceived is {}".format(header))
         #print(type(header))
 
         if int(header) == counter:
@@ -35,7 +35,8 @@ while True:
             #print("send counter", counter)
             s.sendto(str(counter).encode(), addr)
 
-        f.write(data.encode())  # send to app
+        #f.write(data.encode())  # send to app
+        sys.stdout.write(data)
         s.settimeout(2)
 
         if not data:
@@ -43,6 +44,6 @@ while True:
     except timeout:
         #print("time out")
         break
-f.close()
+#f.close()
 s.close()
 print("File Downloaded, exiting.")
