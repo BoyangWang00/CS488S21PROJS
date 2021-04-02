@@ -17,7 +17,7 @@ addr = (host, port)
 total_data = 0
 
 start_time = time.time()
-header_index = 0
+header_index = 1
 akc_data = 0
 
 while True:
@@ -45,9 +45,9 @@ while True:
             # receive AKC
             akc_data, addr = s.recvfrom(100)
 
-            print("akc # is {}".format(akc_data))
+            print("akc # is {}, header is {}".format(akc_data, header_index))
 
-            while (int(akc_data) !=header_index +1):
+            while (int(akc_data) != header_index):
                 s.sendto(b_data.encode(),addr)
                 #print("send again b/c packet lost")
                 akc_data, addr = s.recvfrom(100)
