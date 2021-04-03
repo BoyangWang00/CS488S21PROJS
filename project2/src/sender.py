@@ -58,18 +58,18 @@ while len(sender_datagram_buffer) > 0:
             if int(akc_data.decode()) == datagram_tuple.number:
                 data = sys.stdin.read(buf)
                 total_data += len(data)
+                sender_datagram_buffer.remove(datagram_tuple)
+
                 if data == '':
-                    sender_datagram_buffer.remove(datagram_tuple)
-                    #if len(sender_datagram_buffer) == 0:
-                    break
+                   pass
                 else:
                     #serilize header and data
                     datagram_number += 1
                     b_data = json.dumps({datagram_number: data})
                     s.sendto(b_data.encode(), addr)  # send regular packet
                     datagram_tuple_new = DatagramInFlight(number=datagram_number,time = time.time(), data = b_data)
-                    sender_datagram_buffer.remove(datagram_tuple)
                     sender_datagram_buffer.insert(i,datagram_tuple_new)
+                break
             else:
                 pass
 
@@ -79,9 +79,9 @@ while len(sender_datagram_buffer) > 0:
             # no more ack received; check timeout and resend
             for i in range(len(sender_datagram_buffer)):
                 datagram_tuple = sender_datagram_buffer[i]
-                if time.time() - datagram_tuple.time > 2:
+                if time.time() - datagram_tuple.time > 1:
                         #serilize header and data
-                        b_data = json.dumps({datagram_tuple.number: datagram_tuple.data})
+                        b_data = datagram_tuple.data
                         # resend the packet
                         s.sendto(b_data.encode(), addr)
                         #print("send again b/c time out")
