@@ -27,7 +27,7 @@ try:
     for i in range(buffer_size):
         data = sys.stdin.read(buf)
         total_data += len(data)
-        
+
         #serilize header and data
         datagram_number += 1
         b_data = json.dumps({datagram_number: data})
