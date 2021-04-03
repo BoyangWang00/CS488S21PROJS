@@ -14,7 +14,7 @@ s.bind((host, port))
 
 
 addr = (host, port)
-buf = 2800
+s_buf = 2800
 
 buffer_size = 6
 receiver_datagram_buffer = collections.deque(maxlen=buffer_size)
@@ -25,7 +25,7 @@ while True:
         #print(len(receiver_datagram_buffer))
         if len(receiver_datagram_buffer) < buffer_size:
             try:
-                data, addr = s.recvfrom(buf)  # Waiting for first packet from sender
+                data, addr = s.recvfrom(s_buf)  # Waiting for first packet from sender
                 data_json = json.loads(data)  # deserialize json obj into python dict
 
                 [(header, data)] = list(data_json.items())

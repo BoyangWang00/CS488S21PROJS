@@ -1,66 +1,93 @@
 # ----- sender.py ------
 
 #!/usr/bin/env python
-from socket import *
+import collections
+import socket
 import sys
 import time
 import json
+import errno
 
-s = socket(AF_INET, SOCK_DGRAM)
-s.settimeout(2)
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.setblocking(False)
 host = sys.argv[1]
 port = int(sys.argv[2])
 buf = 1400  # read from stdin
 addr = (host, port)
 
-# f=open("a.txt","rb")
 total_data = 0
+akc_data = 0
+buffer_size = 5
+sender_datagram_buffer = collections.deque(maxlen=buffer_size)
+DatagramInFlight = collections.namedtuple('DatagramInFlight', ['number','time','data'])
+datagram_number = 0
 
 start_time = time.time()
-header_index = 1
-akc_data = 0
-
-while True:
-    try:
+try:
+    for i in range(buffer_size):
         data = sys.stdin.read(buf)
-        if data == '':    # when we reach EOF
-            print("Send finished")
-            end_time = time.time()
-            break
+        total_data += len(data)
+        
+        #serilize header and data
+        datagram_number += 1
+        b_data = json.dumps({datagram_number: data})
+
+        s.sendto(b_data.encode(), addr)  # send regular packet
+        #print("{} bytes have been sent ...".format(total_data))
+
+        datagram_tuple = DatagramInFlight(number=datagram_number,time = time.time(), data = b_data)
+        sender_datagram_buffer.insert(i,datagram_tuple)
         #print("current data is type is ", type(data))
-        #b_data = data.encode()
-        b_data = json.dumps({header_index: data})
-
-        # TODO: change the header index
-
-    except IOError:
-        print("IOError")
-
-        # stop and wait the AKC for last packet
-    s.sendto(b_data.encode(), addr)  # send regular packet
-    total_data += len(b_data)
-    #print("{} bytes have been sent ...".format(total_data))
-    while True:
-        try:
-            # receive AKC
-            akc_data, addr = s.recvfrom(100)
-
-            print("akc # is {}, header is {}".format(akc_data, header_index))
-
-            while (int(akc_data) != header_index):
-                s.sendto(b_data.encode(),addr)
-                #print("send again b/c packet lost")
-                akc_data, addr = s.recvfrom(100)
-
-            header_index += 1
+        if data == '':    # when we reach EOF
+            print("Reach EOF")
             break
 
-        except timeout:
-            # resend the packet
-            s.sendto(b_data.encode(), addr)
-            #print("send again b/c time out")
+except IOError:
+    print("IOError")
+
+while len(sender_datagram_buffer) > 0:
+    try:
+        # receive AKC
+        akc_data, addr = s.recvfrom(100)
+        print("akc # is {}, datagram_number is {}".format(akc_data, datagram_number))
+
+        for i in range(len(sender_datagram_buffer)):
+            print("i is ", i ,"buffer_size is ",len(sender_datagram_buffer))
+            datagram_tuple = sender_datagram_buffer[i]
+
+            if int(akc_data.decode()) == datagram_tuple.number:
+                data = sys.stdin.read(buf)
+                total_data += len(data)
+                if data == '':
+                    sender_datagram_buffer.remove(datagram_tuple)
+                    #if len(sender_datagram_buffer) == 0:
+                    break
+                else:
+                    #serilize header and data
+                    datagram_number += 1
+                    b_data = json.dumps({datagram_number: data})
+                    s.sendto(b_data.encode(), addr)  # send regular packet
+                    datagram_tuple_new = DatagramInFlight(number=datagram_number,time = time.time(), data = b_data)
+                    sender_datagram_buffer.remove(datagram_tuple)
+                    sender_datagram_buffer.insert(i,datagram_tuple_new)
+            else:
+                pass
+
+    except socket.error as e:
+        err = e.args[0]
+        if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
+            # no more ack received; check timeout and resend
+            for i in range(len(sender_datagram_buffer)):
+                datagram_tuple = sender_datagram_buffer[i]
+                if time.time() - datagram_tuple.time > 2:
+                        #serilize header and data
+                        b_data = json.dumps({datagram_tuple.number: datagram_tuple.data})
+                        # resend the packet
+                        s.sendto(b_data.encode(), addr)
+                        #print("send again b/c time out")
 
 s.close()
+end_time = time.time()
 
 time = (end_time - start_time)
 if time == 0:
