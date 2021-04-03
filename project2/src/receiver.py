@@ -16,7 +16,7 @@ s.bind((host, port))
 addr = (host, port)
 s_buf = 2800
 
-buffer_size = 6
+buffer_size = 20
 #receiver_datagram_buffer = collections.deque(maxlen=buffer_size)
 receiver_datagram_buffer = {}
 for i in range(buffer_size):
@@ -49,10 +49,13 @@ while True:
                     position = int(header) % buffer_size
                     if position == 0:
                         position = buffer_size
-                    if receiver_datagram_buffer.get(i) == '':
+                    if receiver_datagram_buffer.get(position-1) == '':
                         num_of_items_in_buffer +=1
                         receiver_datagram_buffer[position-1] = data
                     s.sendto(header.encode(), addr)
+                    for h in range((receiver_buffer_round_time-1)*buffer_size,receiver_buffer_round_time*buffer_size):
+                        if receiver_datagram_buffer.get(h%buffer_size-1) != '':
+                            s.sendto(str(h).encode(), addr)
                 else:
                     pass
                     #do nothing
@@ -77,6 +80,8 @@ while True:
                     sys.stdout.write(receiver_datagram_buffer.get(i))
                     receiver_datagram_buffer[i] = ''
                     num_of_items_in_buffer -=1
+                    for h in range((receiver_buffer_round_time-1)*buffer_size,receiver_buffer_round_time*buffer_size):
+                        s.sendto(str(h).encode(), addr)
                 else:
                     print(list(receiver_datagram_buffer.keys()))
                     print("i is",i)

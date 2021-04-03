@@ -82,6 +82,7 @@ while len(sender_datagram_buffer) > 0:
                 if time.time() - datagram_tuple.time > 1:
                         #serilize header and data
                         b_data = datagram_tuple.data
+                        print("datagram number is", datagram_tuple.number)
                         # resend the packet
                         s.sendto(b_data.encode(), addr)
                         #print("send again b/c time out")
