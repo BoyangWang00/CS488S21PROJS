@@ -39,10 +39,12 @@ while True:
             num_of_items_in_buffer += 1
             s.sendto(header.encode(), addr)
         # print(len(receiver_datagram_buffer))
-        if num_of_items_in_buffer == 5:
+        if num_of_items_in_buffer > 5 or num_of_items_in_buffer < buffer_size:
             for i in range(buffer_size):
                 if receiver_datagram_buffer.get(i) != '':
+                    # print("try")
                     sys.stdout.write(receiver_datagram_buffer.get(i))
+                    receiver_datagram_buffer[i] = ''
                     num_of_items_in_buffer -= 1
                 else:
                     break
@@ -51,8 +53,12 @@ while True:
     except timeout:
         for i in range(buffer_size):
             if receiver_datagram_buffer.get(i) != '':
+                # print("timeout")
                 sys.stdout.write(receiver_datagram_buffer.get(i))
+
             else:
                 pass
+        exit()
+
 
 s.close()
