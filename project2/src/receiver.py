@@ -16,13 +16,15 @@ s.bind((host, port))
 addr = (host, port)
 s_buf = 2800
 
-buffer_size = 3
+buffer_size = 20
 #receiver_datagram_buffer = collections.deque(maxlen=buffer_size)
 receiver_datagram_buffer = {}
 for i in range(buffer_size):
     receiver_datagram_buffer[i] = ''
 num_of_items_in_buffer = 0
 receiver_buffer_round_time = 1
+
+end_of_file = False
 
 
 while True:
@@ -33,17 +35,10 @@ while True:
                 data_json = json.loads(b_data)  # deserialize json obj into python dict
 
                 [(header, data)] = list(data_json.items())
-                s.sendto(header.encode(), addr)
-
-                if not b_data:
-                    i = 0
-                    for i in range(buffer_size):
-                        print("last write-----------------write", i)
-                        if receiver_datagram_buffer.get(i) != '':
-                            sys.stdout.write(receiver_datagram_buffer.get(i))
-                            receiver_datagram_buffer[i] = ''
-                            num_of_items_in_buffer -=1
-                    exit()
+                if int(header) <= receiver_buffer_round_time*buffer_size:
+                #if we received a packet that we already write out
+                #send out ack immediantly
+                    s.sendto(header.encode(), addr)
 
                 if((receiver_buffer_round_time-1)*buffer_size< int(header) <= receiver_buffer_round_time*buffer_size):
                     #print("insert", header)
@@ -54,12 +49,14 @@ while True:
                         num_of_items_in_buffer +=1
                         receiver_datagram_buffer[position-1] = data
                     s.sendto(header.encode(), addr)
-                    # for h in range((receiver_buffer_round_time-1)*buffer_size,receiver_buffer_round_time*buffer_size):
-                    #     if receiver_datagram_buffer.get(h%buffer_size-1) != '':
-                    #         s.sendto(str(h).encode(), addr)
+
                 else:
                     pass
                     #do nothing
+
+                if b_data == '':
+                    end_of_file = True
+
                 s.settimeout(3)
 
             except timeout:
@@ -69,14 +66,14 @@ while True:
                         sys.stdout.write(receiver_datagram_buffer.get(i))
                         receiver_datagram_buffer[i] = ''
                         num_of_items_in_buffer -=1
-                print("time out")
+                #print("time out")
                 exit()
 
         else: 
             #buffer is full and we need to dump 
             for i in range(buffer_size):
-                print("line 68")
-                print("-----------------write", i)
+                #print("line 68")
+                #print("-----------------write", i)
                 if receiver_datagram_buffer.get(i) != '':
                     sys.stdout.write(receiver_datagram_buffer.get(i))
                     receiver_datagram_buffer[i] = ''
@@ -84,9 +81,10 @@ while True:
                     # for h in range((receiver_buffer_round_time-1)*buffer_size,receiver_buffer_round_time*buffer_size):
                     #     s.sendto(str(h).encode(), addr)
                 else:
-                    print(list(receiver_datagram_buffer.keys()))
-                    print("i is",i)
-                    print("BUG!!!!!!!! BUFFER IS NOT FULL")
+                    s.sendto(header.encode(), addr)
+                    #print(list(receiver_datagram_buffer.keys()))
+                    #print("i is",i)
+                    #print("BUG!!!!!!!! BUFFER IS NOT FULL")
                     exit(2)
             receiver_buffer_round_time +=1
             # s.sendto(header.encode(), addr)
