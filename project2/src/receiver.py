@@ -52,17 +52,16 @@ while True:
                     #print("Inside if receiver_datagram ", header)
                     num_of_items_in_buffer += 1
                     receiver_datagram_buffer[position] = data
-                    print(receiver_datagram_buffer[position])
+                    #print(receiver_datagram_buffer[position])
                 # May be inside of the if statement
                 # if buffer size is == to 5
                 s.sendto(header.encode(), addr)
-                if num_of_items_in_buffer == 5:
-
-                    write_to_file(num_of_items_in_buffer)
-            s.settimeout(3)
+                # if num_of_items_in_buffer == 7:
+                #     write_to_file(num_of_items_in_buffer)
+            s.settimeout(1)
 
         except timeout:
-            print("Timeout")
+            # print("Timeout")
             write_to_file(num_of_items_in_buffer)
             #print("inside timeout")
             exit()
