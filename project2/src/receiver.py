@@ -23,41 +23,62 @@ for i in range(buffer_size):
     receiver_datagram_buffer[i] = ''
 num_of_items_in_buffer = 0
 receiver_buffer_round_time = 1
-
+received_packets = []
+timeout_counter = 0
 
 while True:
     try:
         # Waiting for first packet from sender
+        print("before recv")
         b_data, addr = s.recvfrom(s_buf)
         # deserialize json obj into python dict
         data_json = json.loads(b_data)
         [(header, data)] = list(data_json.items())
         index = int(header) % buffer_size
         # Put it inside of buffer_size
+        # Check if we already received the packet but lost ACK
         if receiver_datagram_buffer.get(index) == '':
-            receiver_datagram_buffer[index] = data
-            num_of_items_in_buffer += 1
-            s.sendto(header.encode(), addr)
+            if int(header) in received_packets:
+                print("Resending ack ", int(header))
+                s.sendto(header.encode(), addr)
+            else:
+                receiver_datagram_buffer[index] = data
+                #print("inside else checking data", data)
+                num_of_items_in_buffer += 1
+                print("Sending ack ", int(header))
+                received_packets.append(int(header))
+                s.sendto(header.encode(), addr)
+
         # print(len(receiver_datagram_buffer))
-        if num_of_items_in_buffer > 5 or num_of_items_in_buffer < buffer_size:
+        # WHY DOES THIS FAIL TASK 2
+        print("# of items in buffer", num_of_items_in_buffer)
+        if num_of_items_in_buffer > 3 and num_of_items_in_buffer < buffer_size:
+            print("inside if items > 3")
             for i in range(buffer_size):
+                print("data inside receiver buffer",
+                      receiver_datagram_buffer.get(i))
                 if receiver_datagram_buffer.get(i) != '':
-                    # print("try")
+                    print("try", i)
                     sys.stdout.write(receiver_datagram_buffer.get(i))
                     receiver_datagram_buffer[i] = ''
                     num_of_items_in_buffer -= 1
                 else:
                     break
-
+        print("before settimeout")
         s.settimeout(3)
     except timeout:
+        print("inside timeout")
+
         for i in range(buffer_size):
             if receiver_datagram_buffer.get(i) != '':
                 # print("timeout")
                 sys.stdout.write(receiver_datagram_buffer.get(i))
+                receiver_datagram_buffer[i] = ''
+                s.sendto(header.encode(), addr)
 
             else:
                 pass
+
         exit()
 
 
