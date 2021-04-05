@@ -1,11 +1,11 @@
-# ----- receiver.py -----
+# -----receiver.py-------
 
-#!/usr/bin/env python
 import collections
 from socket import *
 import sys
 import select
 import json
+
 
 host = ''  # "0.0.0.0"
 port = int(sys.argv[1])  # 9999
@@ -16,70 +16,73 @@ s.bind((host, port))
 addr = (host, port)
 s_buf = 2800
 
-buffer_size = 10
-# receiver_datagram_buffer = collections.deque(maxlen=buffer_size)
-receiver_datagram_buffer = {}
+buffer_size = 20
+receiver_datagram_buffer = []
+# Create an empty list
 for i in range(buffer_size):
-    receiver_datagram_buffer[i] = ''
+    receiver_datagram_buffer.append('')
 num_of_items_in_buffer = 0
 receiver_buffer_round_time = 1
 received_packets = []
-timeout_counter = 0
+packet_counter = 0
+next_packet = 1
 
+DatagramInFlight = collections.namedtuple(
+    'DatagramInFlight', ['header', 'data'])
+
+# Retrieve the information about
 while True:
     try:
-        # Waiting for first packet from sender
-        print("before recv")
+        # Get the packet with data
         b_data, addr = s.recvfrom(s_buf)
-        # deserialize json obj into python dict
+        # Deserialize so we can use it
         data_json = json.loads(b_data)
         [(header, data)] = list(data_json.items())
         index = int(header) % buffer_size
-        # Put it inside of buffer_size
-        # Check if we already received the packet but lost ACK
-        if receiver_datagram_buffer.get(index) == '':
+
+        if receiver_datagram_buffer[index] == '':
             if int(header) in received_packets:
-                print("Resending ack ", int(header))
+                # Resending Ack
                 s.sendto(header.encode(), addr)
+                s.settimeout(2)
             else:
-                receiver_datagram_buffer[index] = data
-                #print("inside else checking data", data)
+                datagram_tuple = DatagramInFlight(header=header, data=data)
+                receiver_datagram_buffer.insert(index, datagram_tuple)
                 num_of_items_in_buffer += 1
-                print("Sending ack ", int(header))
                 received_packets.append(int(header))
                 s.sendto(header.encode(), addr)
+                s.settimeout(2)
+                # Writes immediately
+                if num_of_items_in_buffer > 15 and num_of_items_in_buffer < buffer_size:
+                    for i in range(buffer_size):
+                        if receiver_datagram_buffer[i] != '' and (packet_counter+1) == next_packet:
+                            sys.stdout.write(receiver_datagram_buffer[i].data)
+                            receiver_datagram_buffer[i] = ''
+                            num_of_items_in_buffer -= 1
+                            packet_counter += 1
+                            next_packet += 1
 
-        # print(len(receiver_datagram_buffer))
-        # WHY DOES THIS FAIL TASK 2
-        print("# of items in buffer", num_of_items_in_buffer)
-        if num_of_items_in_buffer > 3 and num_of_items_in_buffer < buffer_size:
-            print("inside if items > 3")
-            for i in range(buffer_size):
-                print("data inside receiver buffer",
-                      receiver_datagram_buffer.get(i))
-                if receiver_datagram_buffer.get(i) != '':
-                    print("try", i)
-                    sys.stdout.write(receiver_datagram_buffer.get(i))
-                    receiver_datagram_buffer[i] = ''
-                    num_of_items_in_buffer -= 1
-                else:
-                    break
-        print("before settimeout")
-        s.settimeout(3)
     except timeout:
-        print("inside timeout")
-
+        if int(header) == -1:
+            break
+        next_packet = 1
+        packet_counter = 0
         for i in range(buffer_size):
-            if receiver_datagram_buffer.get(i) != '':
+            if int(header) in received_packets and receiver_datagram_buffer[i] != '' and packet_counter + 1 == next_packet:
+
                 # print("timeout")
-                sys.stdout.write(receiver_datagram_buffer.get(i))
+                sys.stdout.write(receiver_datagram_buffer[i].data)
                 receiver_datagram_buffer[i] = ''
                 s.sendto(header.encode(), addr)
+                s.settimeout(2)
+                num_of_items_in_buffer -= 1
+                packet_counter += 1
+                next_packet += 1
 
-            else:
-                pass
+# Put it inside a tuple and then inside a list
 
-        exit()
+# Put the information into our own write to file buffer
 
+# Send Ack to the sender saying we got the packet
 
-s.close()
+# Once we timeout and there's nothing else to receive, then you quit
