@@ -14,7 +14,7 @@ s.bind((host, port))
 
 
 addr = (host, port)
-s_buf = 2800
+s_buf = 2800 
 
 buffer_size = 1000
 last_buffer_size = buffer_size
@@ -59,7 +59,7 @@ while True:
                     end_of_file = True
                     last_buffer_size = int(header) % buffer_size
 
-                s.settimeout(2)
+                s.settimeout(5)
 
             except timeout:
                 i = 0
@@ -69,7 +69,7 @@ while True:
                         receiver_datagram_buffer[i] = ''
                         num_of_items_in_buffer -=1
                 #print("time out")
-                exit()
+                exit(0)
 
         else: 
             #buffer is full and we need to dump 
@@ -86,8 +86,9 @@ while True:
                     #print(list(receiver_datagram_buffer.keys()))
                     #print("i is",i)
                     #print("BUG!!!!!!!! BUFFER IS NOT FULL")
-                    exit(2)
+                    exit()
             receiver_buffer_round_time +=1
             # s.sendto(header.encode(), addr)
 
 s.close()
+exit(0)
