@@ -16,7 +16,8 @@ s.bind((host, port))
 addr = (host, port)
 s_buf = 2800
 
-buffer_size = 20
+buffer_size = 1000
+last_buffer_size = buffer_size
 #receiver_datagram_buffer = collections.deque(maxlen=buffer_size)
 receiver_datagram_buffer = {}
 for i in range(buffer_size):
@@ -29,7 +30,7 @@ end_of_file = False
 
 while True:
         #print(len(receiver_datagram_buffer))
-        if num_of_items_in_buffer < buffer_size:
+        if num_of_items_in_buffer < buffer_size and num_of_items_in_buffer < last_buffer_size:
             try:
                 b_data, addr = s.recvfrom(s_buf)  # Waiting for first packet from sender
                 data_json = json.loads(b_data)  # deserialize json obj into python dict
@@ -56,8 +57,9 @@ while True:
 
                 if b_data == '':
                     end_of_file = True
+                    last_buffer_size = int(header) % buffer_size
 
-                s.settimeout(3)
+                s.settimeout(2)
 
             except timeout:
                 i = 0
@@ -81,7 +83,6 @@ while True:
                     # for h in range((receiver_buffer_round_time-1)*buffer_size,receiver_buffer_round_time*buffer_size):
                     #     s.sendto(str(h).encode(), addr)
                 else:
-                    s.sendto(header.encode(), addr)
                     #print(list(receiver_datagram_buffer.keys()))
                     #print("i is",i)
                     #print("BUG!!!!!!!! BUFFER IS NOT FULL")

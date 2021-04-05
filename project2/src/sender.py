@@ -17,7 +17,7 @@ addr = (host, port)
 
 total_data = 0
 ack_data = 0
-buffer_size = 10
+buffer_size = 500
 sender_datagram_buffer = collections.deque(maxlen=buffer_size)
 DatagramInFlight = collections.namedtuple('DatagramInFlight', ['number','time','data'])
 datagram_number = 0
@@ -25,6 +25,7 @@ datagram_number = 0
 start_time = time.time()
 
 end_of_file = False
+sender_packet_count={}
 
 try: 
 # try to read first batch of datagram from stdin
@@ -37,6 +38,7 @@ try:
         b_data = json.dumps({datagram_number: data})
 
         s.sendto(b_data.encode(), addr)  # send regular packet
+        sender_packet_count[datagram_number] = 1
         #print("{} bytes have been sent ...".format(total_data))
 
         datagram_tuple = DatagramInFlight(number=datagram_number,time = time.time(), data = b_data)
@@ -72,6 +74,7 @@ while len(sender_datagram_buffer) > 0:
                     datagram_number += 1
                     b_data = json.dumps({datagram_number: data})
                     s.sendto(b_data.encode(), addr)  # send regular packet
+                    sender_packet_count[datagram_number] = 1
                     datagram_tuple_new = DatagramInFlight(number=datagram_number,time = time.time(), data = b_data)
                     sender_datagram_buffer.insert(i,datagram_tuple_new)
 
@@ -96,12 +99,15 @@ while len(sender_datagram_buffer) > 0:
             # no more ack received; check timeout and resend
             for i in range(len(sender_datagram_buffer)):
                 datagram_tuple = sender_datagram_buffer[i]
-                if time.time() - datagram_tuple.time > 1:
+                if time.time() - datagram_tuple.time > 0.01:
+                        resend_time = time.time()
                         #serilize header and data
                         b_data = datagram_tuple.data
-                        #print("datagram number is", datagram_tuple.number)
+                        sender_datagram_buffer[i]._replace(time = resend_time)
+                        #("datagram number is", datagram_tuple.number)
                         # resend the packet
                         s.sendto(b_data.encode(), addr)
+                        sender_packet_count[datagram_tuple.number] += 1
                         #print("send again b/c time out")
 
 s.close()
@@ -116,3 +122,4 @@ else:
 
 print("Sent {} bytes in {} seconds: {} kB/s".format(total_data,
                                                     round(time), round(speed)))
+#print(sender_packet_count)
