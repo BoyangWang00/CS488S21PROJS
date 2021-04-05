@@ -56,7 +56,7 @@ while len(sender_datagram_buffer) > 0:
     try:
         # receive AKC
         ack_data, addr = s.recvfrom(100)
-        print("akc # is {}, datagram_number is {}".format(ack_data, datagram_number))
+        #print("akc # is {}, datagram_number is {}".format(ack_data, datagram_number))
 
         for i in range(len(sender_datagram_buffer)):
             #print("i is ", i ,"buffer_size is ",len(sender_datagram_buffer))
@@ -105,7 +105,7 @@ while len(sender_datagram_buffer) > 0:
                         b_data = datagram_tuple.data
                         sender_datagram_buffer[i] = sender_datagram_buffer[i]._replace(time = resend_time)
                         assert sender_datagram_buffer[i].time == resend_time
-                        print("datagram number is", datagram_tuple.number)
+                        #print("datagram number is", datagram_tuple.number)
                         # resend the packet
                         s.sendto(b_data.encode(), addr)
                         sender_packet_count[datagram_tuple.number] += 1
