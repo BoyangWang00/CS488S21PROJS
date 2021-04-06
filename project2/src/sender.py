@@ -42,11 +42,11 @@ try:
         datagram_number += 1
         # print("current data is type is ", b_data)
         if data == '':    # when we reach EOF
-            print("Reach EOF")
+            print("Sender: Reach EOF")
             break
 
 except IOError:
-    print("IOError")
+    print("Sender: IOError")
 
 # Define Packets in the beginning
 
@@ -56,29 +56,30 @@ while True:
     try:
         # Receive Ack
         akc_data, addr = s.recvfrom(100)
+        print("Sender: Ack we're getting back", int(akc_data.decode()))
         # If we get Ack then remove and move on
         for i in range(len(sender_datagram_buffer)):
             datagram_tuple = sender_datagram_buffer[i]
-            print("The packet # is", datagram_tuple.number)
+
             #This prints packet #
             # print(sender_datagram_buffer[i].number)
             if int(akc_data.decode()) == datagram_tuple.number:
                 #Print Ack #
-                print("The acknowledgement # is ", int(akc_data.decode()))
+                print("Sender: The acknowledgement # is ",
+                      int(akc_data.decode()))
                 try:
                     # Read again
+                    print("Sender: Fetching more data")
                     data = sys.stdin.read(buf)
                     # Keep track of total read
                     total_data += len(data)
                     sender_datagram_buffer.remove(datagram_tuple)
                 except IOError:
-                    print("Nothing left to read")
+                    print("Sender: Nothing left to read")
                 # If there's no data
                 if data == '':
-                    print("Not fetching more data, do nothing")
-                    pass
+                    print("Sender: EOF")
                 else:
-                    print("Fetching more data")
                     # serilize header and data
                     datagram_number += 1
                     b_data = json.dumps({datagram_number: data})
@@ -87,27 +88,31 @@ while True:
                     datagram_tuple_new = DatagramInFlight(
                         number=datagram_number, time=time.time(), data=b_data)
                     sender_datagram_buffer.insert(i, datagram_tuple_new)
+                    print("Sender: Fetching packet # ",
+                          datagram_tuple_new.number)
                 # Completed iterations through buffer
                 break
-
     except socket.error as e:
         # Timedout
 
-        if len(sender_datagram_buffer) == 0:
+        if len(sender_datagram_buffer) > 0:
+
+            for i in range(len(sender_datagram_buffer)):
+                # print(len(sender_datagram_buffer))
+                datagram_tuple = sender_datagram_buffer[i]
+                # serilize header and data
+                b_data = datagram_tuple.data
+                print("Sender: datagram number is", datagram_tuple.number)
+                # resend the packet
+                s.sendto(b_data.encode(), addr)
+                s.settimeout(2)
+        elif len(sender_datagram_buffer) == 0:
+            print("Sender: Sending closeout")
             b_data = json.dumps({-1: "-1"})
             s.sendto(b_data.encode(), addr)
             s.settimeout(2)
             break
-        else:
-            for i in range(len(sender_datagram_buffer)):
-                datagram_tuple = sender_datagram_buffer[i]
-                if time.time() - datagram_tuple.time > 1:
-                    # serilize header and data
-                    b_data = datagram_tuple.data
-                    print("datagram number is", datagram_tuple.number)
-                    # resend the packet
-                    s.sendto(b_data.encode(), addr)
-                    # print("send again b/c time out")
+            # print("send again b/c time out")
     # Go through the rest of the slider buffer to see which ACKs are needed and to re-send
 s.close()
 end_time = time.time()
@@ -117,8 +122,8 @@ if time == 0:
     print("Input file is too small to measure")
 else:
     speed = total_data/time/1000
-    print("Sent {} bytes in {} seconds: {} kB/s".format(total_data,
-                                                        round(time), round(speed)))
+    print("Sender: Sent {} bytes in {} seconds: {} kB/s".format(total_data,
+                                                                round(time), round(speed)))
 
 # Connection Handler
 
