@@ -1,7 +1,7 @@
 # ---- Project 2 Task 3 Experiment Code ----
-# Implenting EMWA
+# Implenting EMWA: holding the past values in memory buffer and constantly updating the buffer whenever a new observation is read
 
-A = .1 # not sure abt value, alpha constant
+A = .1 #varied alpha: 0.1 <= alpha <= 0.25
 srtt = [] #memory buffer of smoothed rtt's (timeout = srtt[n])
 
 
