@@ -1,15 +1,25 @@
 # ---- Project 2 Task 3 Experiment Code ----
-# Implenting EMWA: holding the past values in memory buffer and constantly updating the buffer whenever a new observation is read
+# Dynamic EMWA
+from socket import *
+import sys
+import os
 
-A = .1 #varied alpha: 0.1 <= alpha <= 0.25
+ #varied alpha: 0.1 <= alpha <= 0.25
+aMin = .1
+aMax = .25
+avgRate = 0
+winSize = 5
+#holding the past values in memory buffer and constantly updating the buffer whenever a new observation is read
 srtt = [] #memory buffer of smoothed rtt's (timeout = srtt[n])
 
+print("Testing window size {}".format(winSize))
 
-# need to implement set window size parameter in sender
-# winSize =
-print("Testing window size {0}".format(winSize))
+#Measure rtt for each winSize, instead of measuring for each packet (overhead)
+try:
+    for i in range(winSize):
+        num_packets = winSize
+        num_packets/winSize
 
-#how to measure rtt of each datagram while socket is sending/receiving?...
 while len(sender_datagram_buffer) > 0: #maybe??? need to run while sender is sending datagram, for each one
   #find current rtt of datagram n
   n = datagram_tuple(0) #get datagram number
