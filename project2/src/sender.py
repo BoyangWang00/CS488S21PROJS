@@ -22,13 +22,15 @@ def srtt_cal(ack_receiving_time, packet_sent_out_time,srtt,srttdev):
     rtt_sample = ack_receiving_time - packet_sent_out_time
     if srtt == 0:
         timeout = rtt_sample
+        srtt = rtt_sample
+        srttdev = 0
     else:
         srtt = srtt * 0.875 + rtt_sample*0.125
-        print("srtt is ", srtt)
+        #print("srtt is ", srtt)
         dev_sample = abs(rtt_sample - srtt)
-        print("dev_sample is ", dev_sample)
+        #print("dev_sample is ", dev_sample)
         srttdev = 0.875 * srttdev + 0.125 * dev_sample 
-        print("srttdev is ", srttdev)
+        #print("srttdev is ", srttdev)
         timeout = srtt + 4*srttdev
     return timeout, srtt, srttdev
 
@@ -41,7 +43,7 @@ addr = (host, port)
 
 total_data = 0
 ack_data = 0
-buffer_size = 30
+buffer_size = 1200
 sender_datagram_buffer = collections.deque(maxlen=buffer_size)
 DatagramInFlight = collections.namedtuple('DatagramInFlight', ['number','time','data'])
 datagram_number = 0
@@ -81,12 +83,12 @@ while len(sender_datagram_buffer) > 0 and receiver_closed != True:
     try:
         # receive AKC
         ack_data, addr = s.recvfrom(100)
-        print("akc # is {}, datagram_number is {}".format(ack_data, datagram_number))
+        #print("akc # is {}, datagram_number is {}".format(ack_data, datagram_number))
 
         ack_receiving_time = time.time()
 
         if ack_data.decode() == '-1':
-            print("receiver is closed")
+            #print("receiver is closed")
             receiver_closed = True
             break
         else:
@@ -98,7 +100,7 @@ while len(sender_datagram_buffer) > 0 and receiver_closed != True:
                 if int(ack_data.decode()) == datagram_tuple.number:
                     #cal srtt for current ack
                     timeout, srtt, srttdev = srtt_cal(ack_receiving_time, datagram_tuple.time,srtt,srttdev)
-                    print("srtt is", long(srtt))
+                    #print("srtt is", float(srtt)*1_000_000_000)
 
                     if end_of_file != True:
                     # if ack we received is for datagram in buffer and we haven't reach the EOF 
@@ -147,7 +149,7 @@ while len(sender_datagram_buffer) > 0 and receiver_closed != True:
                         b_data = datagram_tuple.data
                         sender_datagram_buffer[i] = sender_datagram_buffer[i]._replace(time = resend_time)
                         assert sender_datagram_buffer[i].time == resend_time
-                        print("resend b/c time out datagram number is", datagram_tuple.number)
+                        #print("resend b/c time out datagram number is", datagram_tuple.number)
                         # resend the packet
                         s.sendto(b_data.encode(), addr)
                         sender_packet_count[datagram_tuple.number] += 1
