@@ -16,7 +16,7 @@ s.bind((host, port))
 addr = (host, port)
 s_buf = 2800 
 
-buffer_size = 1200
+buffer_size = 20
 last_buffer_size = buffer_size
 #receiver_datagram_buffer = collections.deque(maxlen=buffer_size)
 receiver_datagram_buffer = {}

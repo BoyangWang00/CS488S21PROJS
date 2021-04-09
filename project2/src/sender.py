@@ -43,7 +43,7 @@ addr = (host, port)
 
 total_data = 0
 ack_data = 0
-buffer_size = 1200
+buffer_size = 20
 sender_datagram_buffer = collections.deque(maxlen=buffer_size)
 DatagramInFlight = collections.namedtuple('DatagramInFlight', ['number','time','data'])
 datagram_number = 0
