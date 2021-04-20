@@ -1,0 +1,25 @@
+
+
+To determine the optimal timeout threshold, we estimate RTT using EWMA algorithm and Chebyshev’s inequality which finds how RTTs are varying from the mean. The following formula calculate the average RTT value srtt, estimated deviation srttdev and corresponding timeout, all of which are updated for every acknowledgement received. 
+
+ 	srtt[n] = alpha * rtt_sample + (1 - alpha) * srtt[n-1]   
+	 dev_sample = |rtt_sample - srtt[n]|
+	 srttdev[n] = beta * dev_sample + (1 - beta) * srttdev[n-1]
+	 	timeout = srtt[n] + k * srttdev[n]
+
+With the dynamically tuned timeout, we carry out experiments for the optimal window size for throughput. Our environment is a minimal network topology with two hosts connected to a switch with 10 ms latency and 5% packet loss on each link, and a buffer of size 20. Note that there is no space between parameters. 
+
+The window sizes that we picked are: 3, 50, 100, 300, 750, 1200, 1500, 1800, 2250, and 3000. Our expectations for the optimal window size range from 50-100. 
+
+
+Window size  |	  3    |  50	 |    100   |	300  |	750   |	1200 |	1500 |	1800 |	2250 |	3000
+-------------+---------+---------+----------+--------+--------+------+-------+-------+-------+-------+          
+Median	     |    91   |  284	 |    221   |	203  |	90    |	60   |	200  |	85   |	157  |	104
+-------------+---------+---------+----------+--------+--------+------+-------+-------+-------+-------+
+Mean	     |    89.8 |  290.6	 |    243   |	179.2|	87.2  |	60   |	198.2|	85   |	149.8|	104.2
+-------------+---------+---------+----------+--------+--------+------+-------+-------+-------+-------+
+Min	     |    85   |  275	 |    211   |	66   |	64    |	54   |	183  |	82   |	135  |	101
+-------------+---------+---------+----------+--------+--------+------+-------+-------+-------+-------+
+Max	     |    91   |  324	 |    295   |	222  |	97    |	67   |	210  |	87   |	162  |	109
+
+Given our experiments, the maximum mean of throughputs is 290.6 achieved with the window size of 50. So the most optimal window size for the best throughput is 50. 
