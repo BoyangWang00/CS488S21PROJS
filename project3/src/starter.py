@@ -26,7 +26,7 @@ def adler32_chunk(chunk):
 
 # Checksum objects
 # ----------------
-Signature = collections.namedtuple('Signature', 'md5 adler32')
+Signature = collections.namedtuple('Signature', 'md5 adler32 offset')
 
 
 class Chunks(object):
@@ -63,6 +63,7 @@ def checksums_file(fn):
     """
     Returns object with checksums of file
     """
+    fn_offset = 0
     chunks = Chunks()
     with open(fn) as f:
         while True:
@@ -73,10 +74,12 @@ def checksums_file(fn):
             chunks.append(
                 Signature(
                     adler32=adler32_chunk(chunk.encode()),
-                    md5=md5_chunk(chunk.encode())
+                    md5=md5_chunk(chunk.encode()),
+                    offset=fn_offset
                 )
             )
-
+            fn_offset += BLOCK_SIZE
+        print("chuncks is",chunks.chunks, chunks.chunk_sigs)
         return chunks
 
 def _get_block_list(file_one, file_two):

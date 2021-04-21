@@ -31,7 +31,7 @@ def adler32_chunk(chunk):
 
 # Checksum objects
 # ----------------
-Signature = collections.namedtuple('Signature', 'md5 adler32')
+Signature = collections.namedtuple('Signature', 'md5 adler32 offset')
 
 
 class Chunks(object):
@@ -56,6 +56,11 @@ class Chunks(object):
 
         return None
 
+    def get_offset(self, md5):
+        offset = [self.chunks.offset for signature in self.chunks if self.chunks.md5 == md5]
+        assert len(offset)==1
+        return offset[0]
+
     def __getitem__(self, idx):
         return self.chunks[idx]
 
@@ -69,6 +74,7 @@ def checksums_file(fn):
     """
     Returns object with checksums of file
     """
+    fn_offset = 0
     chunks = Chunks()
     with open(fn) as f:
         while True:
@@ -78,10 +84,13 @@ def checksums_file(fn):
 
             chunks.append(
                 Signature(
-                    adler32=adler32_chunk(chunk),
-                    md5=md5_chunk(chunk)
+                    adler32=adler32_chunk(chunk.encode()),
+                    md5=md5_chunk(chunk.encode()),
+                    offset = fn_offset
                 )
             )
+
+            fn_offset += BLOCK_SIZE
 
         return chunks
 
@@ -110,12 +119,48 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
 
     
     str_data = json.dumps(chunkList) #Necessary? create str from json-like-Python dict
-    serverSocket.sendall(bytes(str_data, encoding="utf-8")) #send entire buffer, sendto() is only for UDP datagram
+    connection_socket.sendall(bytes(str_data, encoding="utf-8")) #send entire buffer, sendto() is only for UDP datagram
 
     # Server receives List from client
-    
 
-    # Server will then only send the chunks that are missing from the client ## Refer to hashes
+    received_request = b''
+    while True:
+    #call a while loop to receve all the data send by server,
+    #if server reach to EOF, serversocket.recv() will return 0, break the loop
+        data = connection_socket.recv(1024)
+        if data:
+            received_request += data
+        else:
+            break
+    #receive request chuncks from client
+    request_checksums = json.loads(received_request.decode(encoding="utf-8"))
+    #find the offset of the chuncks and form offset list
+    offset_list = [chunkList.get_offset(signature.md5) for signature in request_checksums.chunks]
+
+    #Server will only send the chunks that client is requesting for
+    #open file again and load requested chuncks by offset and send it over to client
+    with open('NEW') as f:
+        for offset in offset_list:
+            f.seek(offset)
+            chunk = f.read(BLOCK_SIZE)
+            #we shouldn't fall into this branch because requested chuncks is 
+            #part of NEW file
+            if not chunk:
+                print("BLOCK DOESN'T EXIST!")
+                assert(False)
+            #if len(chunk) is less than block size, we need to hold this block
+            #send it over at last
+            #client will write out the received chunks to a temp file upon receiving
+            #if client will always use len(tempfile)%BLOCK_SIZE == 0 to check whether 
+            #the writing process is interruped in the middle or not
+            #thus we cannot send over the short chuncks until we finish sending others
+            if len(chunk) < BLOCK_SIZE:
+                last_chunk = chunk
+                continue
+
+            connection_socket.sendall(chunk.encode())
+        connection_socket.sendall(last_chunk.encode())
 
 
+    # May not need the following steps- BW
     # Server will assign a header or a tracker to each block size of bytes that it will send to the Client

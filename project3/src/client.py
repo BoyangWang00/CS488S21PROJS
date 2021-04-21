@@ -3,6 +3,7 @@ import hashlib
 import zlib
 import socket
 import sys
+import os
 
 #Client has old file β 
 BLOCK_SIZE = 4
@@ -59,6 +60,46 @@ class Chunks(object):
     def __len__(self):
         return len(self.chunks)
 
+# Build Chunks from a file
+# ------------------------
+def checksums_file(fn):
+    """
+    Returns object with checksums of file
+    """
+    fn_offset = 0
+    chunks = Chunks()
+    with open(fn) as f:
+        while True:
+            chunk = f.read(BLOCK_SIZE)
+            if not chunk:
+                break
+
+            chunks.append(
+                Signature(
+                    adler32=adler32_chunk(chunk.encode()),
+                    md5=md5_chunk(chunk.encode()),
+                    offset = fn_offset
+                )
+            )
+
+            fn_offset += BLOCK_SIZE
+
+        return chunks
+
+
+#TODO: FINISH THIS FUNCTION
+# reconstruct the NEW file by using OLD file, OLD_TEMP file and checksums list received from server
+
+def reconstruct_file(OLD, TEMP_LOG, server_list, old_list, temp_log_list):
+    with open('NEW_TEMP', 'w') as new_temp:
+        for block in server_list:
+            if block in old_list:
+                #find block with offset and write out to new_temp file
+            elif block in temp_log_list:
+                #find block with offset and write out to new_temp file
+    return new_temp
+
+
 
 #Client pass in server @ and port in commandline [1][2]
 serverName = sys.argv[1]
@@ -73,7 +114,16 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
     clientSocket.send('s'.encode())
 
     # Receive List from the server = ChunkList
-    clientSocket.recv(1024).decode("utf-8") #how many B recv?
+    received_data = b''
+    while True:
+    #call a while loop to receve all the data send by server,
+    #if server reach to EOF, clientSocket.recv() will return 0, break the loop
+        data = clientSocket.recv(1024) #how many B recv?
+        if data:
+            received_data += data
+        else:
+            break
+
 
 # Check chunk if it is inside chunkList
 
@@ -82,45 +132,103 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
 # If it is not, offset by 1 and check
 
 
-checksums =  # decode from the server and you get the list of hashes
-# Make a copy of the checksums List = IE. LocalChecksums
-localChecksums = checksums.copy()
-offset = 0
-with open(old_file) as f:
-    while True:
-        chunk = f.read(BLOCK_SIZE)
-        # Until EOF
-        if not chunk:
-            break
-        # Hashes and then checks it against the list that the server sent
-        chunk_number = checksums.get_chunk(chunk)
+    checksums =  json.loads(received_data.decode(encoding='utf-8')) # decode from the server and you get the list of hashes
+    # Make a copy of the checksums List = IE. localChecksums
+    localChecksums = checksums.copy()
+    offset = 0
+    with open('OLD') as f:
+        while True:
+            chunk = f.read(BLOCK_SIZE)
+            # Until EOF
+            if not chunk:
+                break
+            # Hashes and then checks it against the list that the server sent
+            chunk_number = checksums.get_chunk(chunk.encode())
 
-       # If it exists then remove it from the localChecksums
-        if chunk_number is not None:
-            offset += BLOCK_SIZE
-            localChecksums.remove(chunk_number)
-            continue
-            # Just offset by one, read from that part of the file, and then move on
-        else:
-            offset += 1
-            f.seek(offset)
-            continue
+           # If it exists then remove it from the localChecksums
+            if chunk_number is not None:
+                offset += BLOCK_SIZE
+                localChecksums.remove(chunk_number)
+                continue
+                # Just offset by one, read from that part of the file, and then move on
+            else:
+                offset += 1
+                f.seek(offset)
+                continue
+
+#TODO: need to add code to check whether there is a temp_log file under current directry.
+#if there is, which means the download was interrupted last time, we need to check both OLD file 
+#and TEMP_LOG file 
+    try:
+        with open('TEMP_LOG') as temp_log:
+            while True:
+                chunk = temp_log.read(BLOCK_SIZE)
+                # Until EOF
+                if not chunk:
+                    break
+                # Hashes and then checks it against the list that the server sent
+                chunk_number = checksums.get_chunk(chunk.encode())
+
+               # If it exists then remove it from the localChecksums
+                if chunk_number is not None:
+                    offset += BLOCK_SIZE
+                    localChecksums.remove(chunk_number)
+                    continue
+                    # Just offset by one, read from that part of the file, and then move on
+                else:
+                    continue
+                    print("download was interrupted before")
+                    #TEMP_LOG should not fall into this branch unless it reach the last short block 
+                    #because everything else in TEMP_LOG are requested blocks from server
+    except OSError:
+        print('no temp_log in current directry')
 
 
-# After comparation is done, then send the list to the server
+
+# After comparation is done, then send the request list to the server
 
 # client.sendto(server)
 
+    request_list = json.dumps(localChecksums)
+    clientSocket.send(request_list.encode())
 
-# If the server or client cuts off, will the connection still be alive or will the client/server know
-# Client will now receive the new data from the client
+    while localChecksums:
 
-        # If Client decides to pause the download, then you have to make sure to save the header
-        # Client will also have to let the server know that it paused or to stop sending
-        # Write immediately what we got to a temporary file
+    # client start to receiv data chuncks from server
+        received_chunck = b''
+        while True:
+        #call a while loop to receve all the data send by server,
+        #if server reach to EOF, clientSocket.recv() will return 0, break the loop
+            data = clientSocket.recv(1024) #how many B recv?
+            if data:
+                received_data += data
+            else:
+                break
 
-        # Once Client resumes, send a signal back to resume downloading
-        # Send last header received
+        #if file_size%BLOCK_SIZE == 0, no short chunks in the file
+        #append received data by the end
+        #else reset the offset to the end of last whole chunk
+        #overwrite the short chunck
+        file_size = os.stat('TEMP_LOG').st_size
+        if file_size % BLOCK_SIZE == 0
+            with open('TEMP_LOG', 'a') as temp_log:
+                temp_log.write(received_data.decode())
+        else:
+            with open('TEMP_LOG', 'r+') as temp_log:
+                temp_log.seek(file_size//BLOCK_SIZE*BLOCK_SIZE)
+                temp_log.write(received_data.decode())
+
+        #after write out the received chunk data, remove it from list
+        localChecksums.remove(checksums.get_chunk(received_data))
+
+# at this point, everything client requested for is saved in OLD_TEMP file,
+# we can close the TCP connection and start re-contruct the NEW file at client's end
+
+new_temp = reconstruct_file(OLD, TEMP_LOG,checksums,checksums_file(OLD), checksums_file(TEMP_LOG))
+
+#TODO!!
+#rename new_temp to replace OLD file
+#delete OLD_TEMP file
 
 
 # Client will then decode and construct the new file according to checksums' order
