@@ -65,15 +65,15 @@ serverName = sys.argv[1]
 serverPort = int(sys.argv[2])
 serverAddress = (serverName, serverPort)
 
+
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
-      clientSocket.connect(serverAddress)
+    clientSocket.connect(serverAddress)
+                #clientSocket.setblocking(0) # client non-blocking to receive list from server (?)
+    # Client needs to send server a signal that it wants to update
+    clientSocket.send('s'.encode())
 
-# Client needs to send server a signal that it wants to update
-
-
-# Receive List from the server = ChunkList
-
-# client.recvfrom
+    # Receive List from the server = ChunkList
+    clientSocket.recv(1024).decode("utf-8") #how many B recv?
 
 # Check chunk if it is inside chunkList
 

@@ -3,6 +3,7 @@ import hashlib
 import zlib
 import socket
 import sys
+import json
 
 #Server has new file α
 BLOCK_SIZE = 4
@@ -84,6 +85,7 @@ def checksums_file(fn):
 
         return chunks
 
+
 ServerName = ''
 ServerPort = int(sys.argv[2])
 ServerAddress = (ServerName, ServerPort)
@@ -96,22 +98,22 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     
     while 1:
         # Server will receive the signal that client wants to update
-        msg = connection_socket.recv(1024).decode() 
+        msg = connection_socket.recv(1024).decode()  # or 1 byte? try catch?
         if not msg:
             break 
-        
 
-    # Call checksumfiles to make the list
-
+    print("First signal is received")
+    # Call checksumfiles to make the NEW block list
+    chunkList = checksums_file("NEW")
 
     # Send checksums_file (which is the hashed list of the file) to client
 
-
-    # server.sendto
-
+    
+    str_data = json.dumps(chunkList) #Necessary? create str from json-like-Python dict
+    serverSocket.sendall(bytes(str_data, encoding="utf-8")) #send entire buffer, sendto() is only for UDP datagram
 
     # Server receives List from client
-
+    
 
     # Server will then only send the chunks that are missing from the client ## Refer to hashes
 
