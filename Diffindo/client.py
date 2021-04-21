@@ -1,18 +1,19 @@
 import collections
 import hashlib
 import zlib
+import socket
+import sys
 
-
+#Client has old file β 
 BLOCK_SIZE = 4
 
 # Hasher
 # Helper functions
 # ----------------
 
-
 def md5_chunk(chunk):
     """
-    Returns md5 checksum for chunk
+    Returns strong md5 checksum for chunk
     """
     m = hashlib.md5()
     m.update(chunk)
@@ -21,7 +22,7 @@ def md5_chunk(chunk):
 
 def adler32_chunk(chunk):
     """
-    Returns adler32 checksum for chunk
+    Returns weak adler32 checksum for chunk
     """
     return zlib.adler32(chunk)
 
@@ -30,12 +31,11 @@ def adler32_chunk(chunk):
 # ----------------
 Signature = collections.namedtuple('Signature', 'md5 adler32')
 
-
+#Chunks = a list of Signatures
 class Chunks(object):
     """
     Data stucture that holds rolling checksums for file B
     """
-
     def __init__(self):
         self.chunks = []
         self.chunk_sigs = {}
@@ -59,7 +59,17 @@ class Chunks(object):
     def __len__(self):
         return len(self.chunks)
 
+
+#Client pass in server @ and port in commandline [1][2]
+serverName = sys.argv[1]
+serverPort = int(sys.argv[2])
+serverAddress = (serverName, serverPort)
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
+      clientSocket.connect(serverAddress)
+
 # Client needs to send server a signal that it wants to update
+
 
 # Receive List from the server = ChunkList
 

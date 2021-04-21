@@ -1,8 +1,10 @@
 import collections
 import hashlib
 import zlib
+import socket
+import sys
 
-
+#Server has new file α
 BLOCK_SIZE = 4
 
 # Hasher
@@ -82,17 +84,36 @@ def checksums_file(fn):
 
         return chunks
 
-# Server will receive the signal that client wants to update
+ServerName = ''
+ServerPort = int(sys.argv[2])
+ServerAddress = (ServerName, ServerPort)
 
-# Call checksumfiles to make the list
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
+    serverSocket.bind(ServerAddress)
+    serverSocket.listen(1) #queue up 1 connection request
+    print('The server is listening')
+    connection_socket, addr = serverSocket.accept()
+    
+    while 1:
+        # Server will receive the signal that client wants to update
+        msg = connection_socket.recv(1024).decode() 
+        if not msg:
+            break 
+        
 
-# Send checksums_file (which is the hashed list of the file) to client
-
-# server.sendto
+    # Call checksumfiles to make the list
 
 
-# Server receives List from client
+    # Send checksums_file (which is the hashed list of the file) to client
 
-# Server will then only send the chunks that are missing from the client ## Refer to hashes
 
-# Server will assign a header or a tracker to each block size of bytes that it will send to the Client
+    # server.sendto
+
+
+    # Server receives List from client
+
+
+    # Server will then only send the chunks that are missing from the client ## Refer to hashes
+
+
+    # Server will assign a header or a tracker to each block size of bytes that it will send to the Client
