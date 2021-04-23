@@ -96,7 +96,7 @@ def checksums_file(fn):
         return chunks
 
 
-ServerName = ''
+ServerName = sys.argv[1]
 ServerPort = int(sys.argv[2])
 ServerAddress = (ServerName, ServerPort)
 
@@ -115,11 +115,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     print("First signal is received")
     # Call checksumfiles to make the NEW block list
     chunkList = checksums_file("NEW")
+    json_string = {'chunks':chunkList.chunks,'chunk_sigs':chunkList.chunk_sigs}
 
     # Send checksums_file (which is the hashed list of the file) to client
 
     # Necessary? create str from json-like-Python dict
-    str_data = json.dumps(chunkList)
+    str_data = json.dumps(json_string)
     # send entire buffer, sendto() is only for UDP datagram
     connection_socket.sendall(bytes(str_data, encoding="utf-8"))
 

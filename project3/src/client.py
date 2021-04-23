@@ -31,7 +31,7 @@ def adler32_chunk(chunk):
 
 # Checksum objects
 # ----------------
-Signature = collections.namedtuple('Signature', 'md5 adler32')
+Signature = collections.namedtuple('Signature', 'md5 adler32 offset')
 
 # Chunks = a list of Signatures
 
@@ -50,6 +50,12 @@ class Chunks(object):
         self.chunk_sigs.setdefault(sig.adler32, {})
         self.chunk_sigs[sig.adler32][sig.md5] = len(self.chunks) - 1
 
+    def remove(self, sig):
+        self.chunks.remove(sig)
+        self.chunk_sigs[sig.adler32].pop(sig.md5)
+        if self.chunk_sigs[sig.adler32] == None:
+            self.chunk_sigs.pop(sig.adler32)
+
     def get_chunk(self, chunk):
         adler32 = self.chunk_sigs.get(adler32_chunk(chunk))
 
@@ -57,6 +63,11 @@ class Chunks(object):
             return adler32.get(md5_chunk(chunk))
 
         return None
+
+    def get_offset(self, md5):
+        md5_offset = {sig.md5:sig.offset for sig in self.chunks}
+        return md5_offset.get(md5)
+
 
     def __getitem__(self, idx):
         return self.chunks[idx]
@@ -96,14 +107,30 @@ def checksums_file(fn):
 # TODO: FINISH THIS FUNCTION
 # reconstruct the NEW file by using OLD file, OLD_TEMP file and checksums list received from server
 
-# def reconstruct_file(OLD, TEMP_LOG, server_list, old_list, temp_log_list):
-#     with open('NEW_TEMP', 'w') as new_temp:
-#         for block in server_list:
-#             if block in old_list:
-#                 # find block with offset and write out to new_temp file
-#             elif block in temp_log_list:
-#                 # find block with offset and write out to new_temp file
-#     return new_temp
+def reconstruct_file(OLD, TEMP_LOG, server_list):
+    old_file_list = checksums_file(OLD)
+    temp_log_list = checksums_file(TEMP_LOG)
+
+    old = open(OLD,'r')
+    temp_log = open(TEMP_LOG,'r')
+    with open('CONSTRUCT_FILE', 'w') as constructer:
+        for signature in server_list.chunks:
+            if signature.md5 in [items.md5 for items in old_list.chunks]:
+                # find block with offset and write out to new_temp file
+                old_list.get_offset(signature.md5)
+                old.seek(offset)
+                data = old.read(BLOCK_SIZE)
+                constructer.write(data)
+
+            elif signature.md5 in [items.md5 for items in temp_log_list.chunks]:
+                # find block with offset and write out to new_temp file
+                temp_log_list.get_offset(signature.md5)
+                temp_log.seek(offset)
+                data = temp_log.read(BLOCK_SIZE)
+                constructer.write(data)
+    
+    close(OLD)
+    close(TEMP_LOG)
 
 
 # Client pass in server @ and port in commandline [1][2]
@@ -156,7 +183,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
            # If it exists then remove it from the localChecksums
             if chunk_number is not None:
                 offset += BLOCK_SIZE
-                localChecksums.remove(chunk_number)
+
+                localChecksums.remove(checksums.__getitem__(chunk_number))
                 # continue
                 # Just offset by one, read from that part of the file, and then move on
             else:
@@ -180,7 +208,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
                # If it exists then remove it from the localChecksums
                 if chunk_number is not None:
                     offset += BLOCK_SIZE
-                    localChecksums.remove(chunk_number)
+                    localChecksums.remove(checksums.__getitem__(chunk_number))
                     # continue
                     # Just offset by one, read from that part of the file, and then move on
                 else:
@@ -197,71 +225,40 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
 # client.sendto(server)
 
     request_list = json.dumps(localChecksums)
-    # Why not sendall???
-    clientSocket.send(request_list.encode())
+    clientSocket.sendall(request_list.encode())
 
     while localChecksums:
 
         # client start to receiv data chuncks from server
-        received_chunck = b''
-        while True:
-            # call a while loop to receve all the data send by server,
-            # if server reach to EOF, clientSocket.recv() will return 0, break the loop
-            data = clientSocket.recv(1024)  # how many B recv?
-            if data and data.decode() != '':
-                received_data += data
-
-                # Turn data you received into a Hash into a new variable
-
-                # Check the client list and see if it's inside the client's list
-                # If it isn't, then check the server's list to see if it's inside
-                # If it's inside the servers, then find the position
-                if x in request_list:
-                    pass
-                else:
-                    if x in server_list:
-                        # save position of new data to updatae
-                        updateAt = server_list.index(x)
-                    else:
-                        print("{} is not in server list".format(chunk))
-                # Left off here
-                list_to_write.append(index, data.decode())
-
-                # Using the position, append the data into the position for list_to_write
-
+        # call a while loop to receve all the data send by server,
+        # if server reach to EOF, clientSocket.recv() will return 0, break the loop
+        data = clientSocket.recv(BLOCK_SIZE)  # how many B recv?
+        if data and data.decode() != '':
+            # if file_size%BLOCK_SIZE == 0, no short chunks in the file
+            # append received data by the end
+            # else reset the offset to the end of last whole chunk
+            # overwrite the short chunck
+            file_size = os.stat('TEMP_LOG').st_size
+            if file_size % BLOCK_SIZE == 0:
+                with open('TEMP_LOG', 'a') as temp_log:
+                    temp_log.write(data.decode())
             else:
-                break
-    with open('OLD', 'w') as write_out:
-        # Converts to string
-        list_to_write = "".join(list_to_write)
-        # Writes entire thing to file
-        write_out.write(list_to_write)
+                with open('TEMP_LOG', 'r+') as temp_log:
+                    temp_log.seek(file_size//BLOCK_SIZE*BLOCK_SIZE)
+                    temp_log.write(data.decode())
 
-        # if file_size%BLOCK_SIZE == 0, no short chunks in the file
-        # append received data by the end
-        # else reset the offset to the end of last whole chunk
-        # overwrite the short chunck
-        file_size = os.stat('TEMP_LOG').st_size
-        if file_size % BLOCK_SIZE == 0
-        with open('TEMP_LOG', 'a') as temp_log:
-            temp_log.write(received_data.decode())
-        else:
-            with open('TEMP_LOG', 'r+') as temp_log:
-                temp_log.seek(file_size//BLOCK_SIZE*BLOCK_SIZE)
-                temp_log.write(received_data.decode())
-
-        # after write out the received chunk data, remove it from list
-        localChecksums.remove(checksums.get_chunk(received_data))
+            # after write out the received chunk data, remove it from list
+            localChecksums.remove(checksums.get_chunk(data))
 
 # at this point, everything client requested for is saved in OLD_TEMP file,
 # we can close the TCP connection and start re-contruct the NEW file at client's end
 
-new_temp = reconstruct_file(
-    OLD, TEMP_LOG, checksums, checksums_file(OLD), checksums_file(TEMP_LOG))
-
-# TODO!!
-# rename new_temp to replace OLD file
-# delete OLD_TEMP file
+reconstruct_file(OLD, TEMP_LOG, checksums)
+#we write out the whole contructor file now
 
 
-# Client will then decode and construct the new file according to checksums' order
+# rename CONSTRUCT_FILE to replace OLD file
+# delete TEMP_LOG file
+os.rename(r'CONSTRUCT_FILE',r'OLD')
+
+os.remove('TEMP_LOG')
