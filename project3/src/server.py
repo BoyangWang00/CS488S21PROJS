@@ -56,11 +56,16 @@ class Chunks(object):
 
         return None
 
+
     def get_offset(self, md5):
-        offset = [
-            self.chunks.offset for signature in self.chunks if self.chunks.md5 == md5]
-        assert len(offset) == 1
-        return offset[0]
+        md5_offset = {sig.md5:sig.offset for sig in self.chunks}
+        return md5_offset.get(md5)
+
+    def copy(self):
+        new_chunck = Chunks()
+        for sigs in self.chunks:
+            new_chunck.append(sigs)
+        return new_chunck
 
     def __getitem__(self, idx):
         return self.chunks[idx]
@@ -95,6 +100,18 @@ def checksums_file(fn):
 
         return chunks
 
+def translate_from_Json(chunks,string):
+    json_string = json.loads(string)
+    for sigs in json_string.get("chunks"):
+        chunks.append(
+            Signature(
+                adler32 = sigs[1],
+                md5=sigs[0],
+                offset=sigs[2]
+                )
+            )
+    print("return_chunk is ", chunks)
+
 
 ServerName = sys.argv[1]
 ServerPort = int(sys.argv[2])
@@ -106,41 +123,51 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     print('The server is listening')
     connection_socket, addr = serverSocket.accept()
 
-    while 1:
-        # Server will receive the signal that client wants to update
-        msg = connection_socket.recv(1024).decode()  # or 1 byte? try catch?
-        if not msg:
-            break
+    # Server will receive the signal that client wants to update
+    msg = connection_socket.recv(1024).decode()  # or 1 byte? try catch?
+    print("receive msg is s: ",msg)
 
     print("First signal is received")
     # Call checksumfiles to make the NEW block list
     chunkList = checksums_file("NEW")
+    print(chunkList)
     json_string = {'chunks':chunkList.chunks,'chunk_sigs':chunkList.chunk_sigs}
+    print(json_string)
 
     # Send checksums_file (which is the hashed list of the file) to client
 
     # Necessary? create str from json-like-Python dict
     str_data = json.dumps(json_string)
     # send entire buffer, sendto() is only for UDP datagram
-    connection_socket.sendall(bytes(str_data, encoding="utf-8"))
+    connection_socket.sendall(str_data.encode())
+    # singnal to infor client that no more data is sent
+    connection_socket.sendall('-1'.encode())
 
     # Server receives List from client
+    # receive request chuncks from client
 
     received_request = b''
     while True:
         # call a while loop to receve all the data send by server,
         # if server reach to EOF, serversocket.recv() will return 0, break the loop
-        data = connection_socket.recv(1024)
-        if data:
-            received_request += data
-        else:
+        data = connection_socket.recv(1024)  # how many B recv?
+        print("data is ", data)
+        print("last two digit is: ",data.decode()[-2:])
+        received_request += data
+        if data.decode()[-2:] == '-1':
             break
-    # receive request chuncks from client
-    request_checksums = json.loads(received_request.decode(encoding="utf-8"))
+    print("The whole received data is ",received_request)
+
+    #convert received request into Chunks class
+
+    request_checksums = Chunks()
+    translate_from_Json(request_checksums,received_request[:-2])
+
     # find the offset of the chuncks and form offset list
     # .Chunks should not be iterable
     offset_list = [chunkList.get_offset(signature.md5)
                    for signature in request_checksums.chunks]
+    print("offset list is ", offset_list)
 
     # Server will only send the chunks that client is requesting for
     # open file again and load requested chuncks by offset and send it over to client
@@ -164,10 +191,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
                 last_chunk = chunk
                 continue
             else:
-
+                print("send chunck ", chunk)
                 connection_socket.sendall(chunk.encode())
 
-        # Why do we need this?
+        print("send last chunck ", last_chunk)
         connection_socket.sendall(last_chunk.encode())
 
     # May not need the following steps- BW

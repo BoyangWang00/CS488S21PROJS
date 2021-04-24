@@ -4,6 +4,7 @@ import zlib
 import socket
 import sys
 import os
+import json
 
 # Client has old file β
 BLOCK_SIZE = 4
@@ -53,7 +54,7 @@ class Chunks(object):
     def remove(self, sig):
         self.chunks.remove(sig)
         self.chunk_sigs[sig.adler32].pop(sig.md5)
-        if self.chunk_sigs[sig.adler32] == None:
+        if self.chunk_sigs[sig.adler32] == {}:
             self.chunk_sigs.pop(sig.adler32)
 
     def get_chunk(self, chunk):
@@ -67,6 +68,12 @@ class Chunks(object):
     def get_offset(self, md5):
         md5_offset = {sig.md5:sig.offset for sig in self.chunks}
         return md5_offset.get(md5)
+
+    def copy(self):
+        new_chunck = Chunks()
+        for sigs in self.chunks:
+            new_chunck.append(sigs)
+        return new_chunck
 
 
     def __getitem__(self, idx):
@@ -132,6 +139,17 @@ def reconstruct_file(OLD, TEMP_LOG, server_list):
     close(OLD)
     close(TEMP_LOG)
 
+def translate_from_Json(chunks,string):
+    json_string = json.loads(string)
+    for sigs in json_string.get("chunks"):
+        chunks.append(
+            Signature(
+                adler32 = sigs[1],
+                md5=sigs[0],
+                offset=sigs[2]
+                )
+            )
+    print("return_chunk is ", chunks)
 
 # Client pass in server @ and port in commandline [1][2]
 serverName = sys.argv[1]
@@ -143,19 +161,28 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
     clientSocket.connect(serverAddress)
     # clientSocket.setblocking(0) # client non-blocking to receive list from server (?)
     # Client needs to send server a signal that it wants to update
-    clientSocket.send('s'.encode())
+    clientSocket.sendall('s'.encode())
 
     # Receive List from the server = ChunkList
     received_data = b''
     while True:
         # call a while loop to receve all the data send by server,
-        # if server reach to EOF, clientSocket.recv() will return 0, break the loop
+        # if server reach to EOF, clientSocket.recv() will return '-1', break the loop
         data = clientSocket.recv(1024)  # how many B recv?
-        if data:
-            received_data += data
-        else:
+        print("data is ", data)
+        print("last two digit is: ",data.decode()[-2:])
+        received_data += data
+        if data.decode()[-2:] == '-1':
             break
+    print("The whole received data is ",received_data)
 
+# decode from the server and you get the list of hashes
+    checksums = Chunks()
+    print(checksums)
+# need to re-construct Chunks object based on json string that we received
+    translate_from_Json(checksums,received_data.decode()[:-2])
+    json_string = {'chunks':checksums.chunks,'chunk_sigs':checksums.chunk_sigs}
+    print("checksums after translate_from_Json", json_string)
 
 # Check chunk if it is inside chunkList
 
@@ -163,9 +190,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
 
 # If it is not, offset by 1 and check
 
-    # decode from the server and you get the list of hashes
-    checksums = json.loads(received_data.decode(
-        encoding='utf-8'))  # Returns the list
     # Make a copy of the checksums List = IE. localChecksums
     localChecksums = checksums.copy()
     list_to_write = []
@@ -223,9 +247,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
 # After comparation is done, then send the request list to the server
 
 # client.sendto(server)
-
-    request_list = json.dumps(localChecksums)
+    json_format = {'chunks':localChecksums.chunks,'chunk_sigs':localChecksums.chunk_sigs}
+    request_list = json.dumps(json_format)
     clientSocket.sendall(request_list.encode())
+# singnal to infor client that no more data is sent
+    clientSocket.sendall('-1'.encode())
 
     while localChecksums:
 
