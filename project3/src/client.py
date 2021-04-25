@@ -6,7 +6,7 @@ import sys
 import os
 import json
 import nacl.utils
-from nacl.public import PrivateKey, SealedBox
+from nacl.public import PrivateKey, Box
 
 # Client has old file β
 BLOCK_SIZE = 4

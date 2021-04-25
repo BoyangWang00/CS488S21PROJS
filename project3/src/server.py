@@ -5,7 +5,7 @@ import socket
 import sys
 import json
 import nacl.utils
-from nacl.public import PrivateKey, SealedBox
+from nacl.public import PrivateKey, Box
 
 # Server has new file α
 BLOCK_SIZE = 4
