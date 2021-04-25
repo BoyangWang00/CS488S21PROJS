@@ -119,10 +119,7 @@ ServerName = sys.argv[1]
 ServerPort = int(sys.argv[2])
 ServerAddress = (ServerName, ServerPort)
 
-#ENCRYPTION:
-skServer = PrivateKey.generate()
-pkServer = skServer.public_key
-server_box = Box(skServer, pkClient)
+
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     serverSocket.bind(ServerAddress)
     serverSocket.listen(1)  # queue up 1 connection request
@@ -130,10 +127,15 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     connection_socket, addr = serverSocket.accept()
 
     # Server will receive the signal that client wants to update
-    msg = connection_socket.recv(1024).decode()  # or 1 byte? try catch?
-    print("receive msg is client public key: ",msg)
+    pkClient = connection_socket.recv(1024).decode()  # or 1 byte? try catch?
+    print("receive msg is client public key: ", pkClient)
 
-    print("First signal is received")
+    #ENCRYPTION: Move it here bc just received pkClient
+    skServer = PrivateKey.generate()
+    pkServer = skServer.public_key
+    server_box = Box(skServer, pkClient)
+
+    print("First signal public key is received")
     # Call checksumfiles to make the NEW block list
     chunkList = checksums_file("NEW")
     print("chunklist is ",chunkList)
