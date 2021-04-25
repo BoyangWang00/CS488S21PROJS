@@ -4,6 +4,8 @@ import zlib
 import socket
 import sys
 import json
+import nacl.utils
+from nacl.public import PrivateKey, SealedBox
 
 # Server has new file α
 BLOCK_SIZE = 4
@@ -117,6 +119,10 @@ ServerName = sys.argv[1]
 ServerPort = int(sys.argv[2])
 ServerAddress = (ServerName, ServerPort)
 
+#ENCRYPTION:
+skServer = PrivateKey.generate()
+pkServer = skServer.public_key
+server_box = Box(skServer, pkClient)
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     serverSocket.bind(ServerAddress)
     serverSocket.listen(1)  # queue up 1 connection request
@@ -125,7 +131,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
 
     # Server will receive the signal that client wants to update
     msg = connection_socket.recv(1024).decode()  # or 1 byte? try catch?
-    print("receive msg is s: ",msg)
+    print("receive msg is client public key: ",msg)
 
     print("First signal is received")
     # Call checksumfiles to make the NEW block list
@@ -136,10 +142,16 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
 
     # Send checksums_file (which is the hashed list of the file) to client
 
-    # Necessary? create str from json-like-Python dict
+ 
     str_data = json.dumps(json_string)
+    #ENCRYPTION:
+    encrypted = server_box.encrypt(str_data.encode)
+    connection_socket.sendall(encrypted.encode())
+
+
     # send entire buffer, sendto() is only for UDP datagram
-    connection_socket.sendall(str_data.encode())
+    #connection_socket.sendall(str_data.encode())
+    
     # singnal to infor client that no more data is sent
     connection_socket.sendall('-1'.encode())
 

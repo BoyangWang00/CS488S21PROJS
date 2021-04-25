@@ -5,6 +5,8 @@ import socket
 import sys
 import os
 import json
+import nacl.utils
+from nacl.public import PrivateKey, SealedBox
 
 # Client has old file β
 BLOCK_SIZE = 4
@@ -164,19 +166,25 @@ serverName = sys.argv[1]
 serverPort = int(sys.argv[2])
 serverAddress = (serverName, serverPort)
 
+skClient = PrivateKey.generate()
+pkClient = skClient.public_key
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
     clientSocket.connect(serverAddress)
     # clientSocket.setblocking(0) # client non-blocking to receive list from server (?)
     # Client needs to send server a signal that it wants to update
-    clientSocket.sendall('s'.encode())
+    clientSocket.sendall(pkClient.encode())
 
     # Receive List from the server = ChunkList
     received_data = b''
+
     while True:
         # call a while loop to receve all the data send by server,
         # if server reach to EOF, clientSocket.recv() will return '-1', break the loop
         data = clientSocket.recv(1024)  # how many B recv?
+        #Client creates a 2nd box with private key to decrypt the message
+        client_box = Box(skClient, pkServer)
+        data = client_box.decrypt(data)
         print("data is ", data)
         print("last two digit is: ",data.decode()[-2:])
         received_data += data
