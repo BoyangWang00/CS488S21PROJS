@@ -6,7 +6,7 @@ import sys
 import json
 
 # Server has new file α
-BLOCK_SIZE = 4
+BLOCK_SIZE = 10
 
 # Hasher
 # Helper functions
@@ -113,8 +113,9 @@ def translate_from_Json(chunks,string):
     print("return_chunk is ", chunks)
 
 
-ServerName = sys.argv[1]
-ServerPort = int(sys.argv[2])
+ServerName = ''
+ServerPort = int(sys.argv[1])
+#File_path = sys.argv[2]
 ServerAddress = (ServerName, ServerPort)
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
@@ -124,12 +125,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     connection_socket, addr = serverSocket.accept()
 
     # Server will receive the signal that client wants to update
-    msg = connection_socket.recv(1024).decode()  # or 1 byte? try catch?
-    print("receive msg is s: ",msg)
+    File_path = connection_socket.recv(1024).decode()  # or 1 byte? try catch?
+    print("receive msg is s: ",File_path)
 
     print("First signal is received")
     # Call checksumfiles to make the NEW block list
-    chunkList = checksums_file("NEW")
+    chunkList = checksums_file(File_path)
     print("chunklist is ",chunkList)
     json_string = {'chunks':chunkList.chunks,'chunk_sigs':chunkList.chunk_sigs}
     print("json_string",json_string)
@@ -172,7 +173,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     # Server will only send the chunks that client is requesting for
     # open file again and load requested chuncks by offset and send it over to client
     last_chunk = ''
-    with open('NEW') as f:
+    with open(File_path) as f:
         for offset in offset_list:
             f.seek(offset)
             chunk = f.read(BLOCK_SIZE)
@@ -193,9 +194,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
             else:
                 print("send chunck ", chunk,'end')
                 connection_socket.sendall(chunk.encode())
-
-        print("send last chunck ", last_chunk)
-        connection_socket.sendall(last_chunk.encode())
+        if last_chunk != '':
+            print("send last chunck ", last_chunk)
+            connection_socket.sendall(last_chunk.encode())
 
     # May not need the following steps- BW
     # Server will assign a header or a tracker to each block size of bytes that it will send to the Client
