@@ -6,7 +6,7 @@ import sys
 import json
 
 # Server has new file α
-BLOCK_SIZE = 10
+BLOCK_SIZE = 36
 
 # Hasher
 # Helper functions
@@ -121,7 +121,7 @@ ServerAddress = (ServerName, ServerPort)
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     serverSocket.bind(ServerAddress)
     serverSocket.listen(1)  # queue up 1 connection request
-    print('The server is listening')
+    print('The server is listening on', ServerPort)
     connection_socket, addr = serverSocket.accept()
 
     # Server will receive the signal that client wants to update
@@ -197,6 +197,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
         if last_chunk != '':
             print("send last chunck ", last_chunk)
             connection_socket.sendall(last_chunk.encode())
-
+exit(0)
     # May not need the following steps- BW
     # Server will assign a header or a tracker to each block size of bytes that it will send to the Client

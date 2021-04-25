@@ -7,7 +7,7 @@ import os
 import json
 
 # Client has old file β
-BLOCK_SIZE = 10
+BLOCK_SIZE = 36
 
 # Hasher
 # Helper functions
@@ -119,10 +119,12 @@ def reconstruct_file(OLD, TEMP_LOG, server_list, old_file_list):
     print("start construct the file")
     print("server_list",server_list, "length is", len(server_list))
     print()
-    temp_log_list = checksums_file(TEMP_LOG)
+    if os.path.exists(TEMP_LOG):
+        temp_log_list = checksums_file(TEMP_LOG)
 
     old = open(OLD,'r')
-    temp_log = open(TEMP_LOG,'r')
+    if os.path.exists(TEMP_LOG):
+        temp_log = open(TEMP_LOG,'r')
     with open(old_file_name+'CONSTRUCT_FILE', 'w') as constructer:
 
         for signature in server_list.chunks:
@@ -135,18 +137,19 @@ def reconstruct_file(OLD, TEMP_LOG, server_list, old_file_list):
                 data = old.read(BLOCK_SIZE)
                 print('data from old file', data)
                 constructer.write(data)
-
-            if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
-                # find block with offset and write out to new_temp file
-                offset = temp_log_list.get_offset(signature.md5)
-                print('offset of temp_log', offset)
-                temp_log.seek(offset)
-                data = temp_log.read(BLOCK_SIZE)
-                print("data from temp_log", data)
-                constructer.write(data)
+            if os.path.exists(TEMP_LOG):
+                if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
+                    # find block with offset and write out to new_temp file
+                    offset = temp_log_list.get_offset(signature.md5)
+                    print('offset of temp_log', offset)
+                    temp_log.seek(offset)
+                    data = temp_log.read(BLOCK_SIZE)
+                    print("data from temp_log", data)
+                    constructer.write(data)
     
     old.close()
-    temp_log.close()
+    if os.path.exists(TEMP_LOG):
+        temp_log.close()
 
 def translate_from_Json(string):
     local_chunks = Chunks()
@@ -170,10 +173,13 @@ option = sys.argv[3]
 src_path_new = sys.argv[4]
 des_path_old = sys.argv[5]
 old_file_name = os.path.basename(des_path_old)
+directry_path = os.path.dirname(des_path_old)
+temp_log_path = os.path.join(directry_path, old_file_name+'TEMP_LOG')
 
 if option == 'download':
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
+        print("client is trying to connect to ", serverPort)
         clientSocket.connect(serverAddress)
         # clientSocket.setblocking(0) # client non-blocking to receive list from server (?)
         # Client needs to send server a signal that it wants to update
@@ -245,7 +251,7 @@ if option == 'download':
     # if there is, which means the download was interrupted last time, we need to check both OLD file
     # and TEMP_LOG file
         try:
-            with open(old_file_name+'TEMP_LOG') as temp_log:
+            with open(temp_log_path) as temp_log:
                 while True:
                     chunk = temp_log.read(BLOCK_SIZE)
                     # Until EOF
@@ -291,14 +297,14 @@ if option == 'download':
                 # append received data by the end
                 # else reset the offset to the end of last whole chunk
                 # overwrite the short chunck
-                print("is file in the path " + str(os.path.exists(old_file_name+'TEMP_LOG') ))
-                if not os.path.exists(old_file_name+'TEMP_LOG'):
-                    with open(old_file_name+'TEMP_LOG','w'):
-                        assert os.path.exists(old_file_name+'TEMP_LOG')
-                        print("created ", old_file_name+'TEMP_LOG')
+                print("is file in the path " + str(os.path.exists(temp_log_path) ))
+                if not os.path.exists(temp_log_path):
+                    with open(temp_log_path,'w'):
+                        assert os.path.exists(temp_log_path)
+                        print("created ", temp_log_path)
                         pass
-                with open(old_file_name+'TEMP_LOG', 'r+') as temp_log:
-                    file_size = os.stat(old_file_name+'TEMP_LOG').st_size
+                with open(temp_log_path, 'r+') as temp_log:
+                    file_size = os.stat(temp_log_path).st_size
                     temp_log.seek(file_size//BLOCK_SIZE*BLOCK_SIZE)
                     temp_log.write(data.decode())
 
@@ -313,7 +319,7 @@ if option == 'download':
     # we can close the TCP connection and start re-contruct the NEW file at client's end
 
 
-    reconstruct_file(des_path_old, old_file_name+'TEMP_LOG', checksums,old_file_list)
+    reconstruct_file(des_path_old, temp_log_path, checksums,old_file_list)
     #we write out the whole contructor file now
 
 
@@ -321,7 +327,8 @@ if option == 'download':
     # delete TEMP_LOG file
     os.rename(old_file_name+'CONSTRUCT_FILE',des_path_old)
 
-    #os.remove(old_file_name+'TEMP_LOG')
+    if os.path.exists(temp_log_path):
+        os.remove(temp_log_path)
     print(des_path_old, "download completed")
     exit()
 
