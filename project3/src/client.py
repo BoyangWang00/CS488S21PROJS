@@ -246,6 +246,7 @@ if option == 'download':
                     offset += 1
                     f.seek(offset)
                     # continue
+            shopping_list_len_before_templog = len(localChecksums.chunks)
 
     # TODO: need to add code to check whether there is a temp_log file under current directry.
     # if there is, which means the download was interrupted last time, we need to check both OLD file
@@ -276,9 +277,12 @@ if option == 'download':
            #print('no temp_log in current directry')
             pass
 
-
+        #for test porpose only, if CHECK_SHOPPING_LIST_SHOULD_BE_SHORT is on, which means we preset the 
+        #temp_log in directory. so shopping list should be shorter than shopping_list_len_before_templog
+        if os.environ.get('CHECK_SHOPPING_LIST_SHOULD_BE_SHORT') == '1':
+            #print(len(localChecksums.chunks), shopping_list_len_before_templog)
+            assert (len(localChecksums.chunks) < shopping_list_len_before_templog)
     # After comparation is done, then send the request list to the server
-
     # client.sendto(server)
         json_format = {'chunks':localChecksums.chunks,'chunk_sigs':localChecksums.chunk_sigs}
         request_list = json.dumps(json_format)
