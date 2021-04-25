@@ -110,7 +110,7 @@ def translate_from_Json(chunks,string):
                 offset=sigs[2]
                 )
             )
-    print("return_chunk is ", chunks)
+    #print("return_chunk is ", chunks)
 
 
 ServerName = ''
@@ -121,19 +121,19 @@ ServerAddress = (ServerName, ServerPort)
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     serverSocket.bind(ServerAddress)
     serverSocket.listen(1)  # queue up 1 connection request
-    print('The server is listening on', ServerPort)
+    #print('The server is listening on', ServerPort)
     connection_socket, addr = serverSocket.accept()
 
     # Server will receive the signal that client wants to update
     File_path = connection_socket.recv(1024).decode()  # or 1 byte? try catch?
-    print("receive msg is s: ",File_path)
+    #print("receive msg is s: ",File_path)
 
-    print("First signal is received")
+    #print("First signal is received")
     # Call checksumfiles to make the NEW block list
     chunkList = checksums_file(File_path)
-    print("chunklist is ",chunkList)
+    #print("chunklist is ",chunkList)
     json_string = {'chunks':chunkList.chunks,'chunk_sigs':chunkList.chunk_sigs}
-    print("json_string",json_string)
+    #print("json_string",json_string)
 
     # Send checksums_file (which is the hashed list of the file) to client
 
@@ -152,12 +152,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
         # call a while loop to receve all the data send by server,
         # if server reach to EOF, serversocket.recv() will return 0, break the loop
         data = connection_socket.recv(1024)  # how many B recv?
-        print("data is ", data)
-        print("last two digit is: ",data.decode()[-2:])
+        #print("data is ", data)
+        #print("last two digit is: ",data.decode()[-2:])
         received_request += data
         if data.decode()[-2:] == '-1':
             break
-    print("The whole received data is ",received_request)
+    #print("The whole received data is ",received_request)
 
     #convert received request into Chunks class
 
@@ -168,7 +168,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     # .Chunks should not be iterable
     offset_list = [chunkList.get_offset(signature.md5)
                    for signature in request_checksums.chunks]
-    print("offset list is ", offset_list)
+    #print("offset list is ", offset_list)
 
     # Server will only send the chunks that client is requesting for
     # open file again and load requested chuncks by offset and send it over to client
@@ -180,7 +180,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
             # we shouldn't fall into this branch because requested chuncks is
             # part of NEW file
             if not chunk:
-                print("BLOCK DOESN'T EXIST!")
+                #print("BLOCK DOESN'T EXIST!")
                 assert(False)
             # if len(chunk) is less than block size, we need to hold this block
             # send it over at last
@@ -192,10 +192,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
                 last_chunk = chunk
                 continue
             else:
-                print("send chunck ", chunk,'end')
+                #print("send chunck ", chunk,'end')
                 connection_socket.sendall(chunk.encode())
         if last_chunk != '':
-            print("send last chunck ", last_chunk)
+            #print("send last chunck ", last_chunk)
             connection_socket.sendall(last_chunk.encode())
 exit(0)
     # May not need the following steps- BW

@@ -116,8 +116,8 @@ def checksums_file(fn):
 # reconstruct the NEW file by using OLD file, OLD_TEMP file and checksums list received from server
 
 def reconstruct_file(OLD, TEMP_LOG, server_list, old_file_list):
-    print("start construct the file")
-    print("server_list",server_list, "length is", len(server_list))
+    #print("start construct the file")
+    #print("server_list",server_list, "length is", len(server_list))
     print()
     if os.path.exists(TEMP_LOG):
         temp_log_list = checksums_file(TEMP_LOG)
@@ -128,23 +128,23 @@ def reconstruct_file(OLD, TEMP_LOG, server_list, old_file_list):
     with open(old_file_name+'CONSTRUCT_FILE', 'w') as constructer:
 
         for signature in server_list.chunks:
-            print('sig',signature)
+            #print('sig',signature)
             if signature.md5 in [items.md5 for items in old_file_list.chunks]:
                 # find block with offset and write out to new_temp file
                 offset = old_file_list.get_offset(signature.md5)
-                print('offset of old file', offset)
+                #print('offset of old file', offset)
                 old.seek(offset)
                 data = old.read(BLOCK_SIZE)
-                print('data from old file', data)
+                #print('data from old file', data)
                 constructer.write(data)
             if os.path.exists(TEMP_LOG):
                 if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
                     # find block with offset and write out to new_temp file
                     offset = temp_log_list.get_offset(signature.md5)
-                    print('offset of temp_log', offset)
+                    #print('offset of temp_log', offset)
                     temp_log.seek(offset)
                     data = temp_log.read(BLOCK_SIZE)
-                    print("data from temp_log", data)
+                    #print("data from temp_log", data)
                     constructer.write(data)
     
     old.close()
@@ -162,7 +162,7 @@ def translate_from_Json(string):
                 offset=sigs[2]
                 )
             )
-    print("return_chunk is ", local_chunks)
+    #print("return_chunk is ", local_chunks)
     return local_chunks
 
 # Client pass in server @ and port in commandline [1][2]
@@ -179,7 +179,7 @@ temp_log_path = os.path.join(directry_path, old_file_name+'TEMP_LOG')
 if option == 'download':
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
-        print("client is trying to connect to ", serverPort)
+        #print("client is trying to connect to ", serverPort)
         clientSocket.connect(serverAddress)
         # clientSocket.setblocking(0) # client non-blocking to receive list from server (?)
         # Client needs to send server a signal that it wants to update
@@ -191,19 +191,19 @@ if option == 'download':
             # call a while loop to receve all the data send by server,
             # if server reach to EOF, clientSocket.recv() will return '-1', break the loop
             data = clientSocket.recv(1024)  # how many B recv?
-            print("data is ", data)
-            print("last two digit is: ",data.decode()[-2:])
+            #print("data is ", data)
+            #print("last two digit is: ",data.decode()[-2:])
             received_data += data
             if data.decode()[-2:] == '-1':
                 break
-        print("The whole received data is ",received_data)
+        #print("The whole received data is ",received_data)
 
     # decode from the server and you get the list of hashes
     # need to re-construct Chunks object based on json string that we received
         checksums = translate_from_Json(received_data.decode()[:-2])
-        print("here is the checksums!!!!!!",checksums)
+        #print("here is the checksums!!!!!!",checksums)
         json_string = {'chunks':checksums.chunks,'chunk_sigs':checksums.chunk_sigs}
-        print("checksums after translate_from_Json", json_string)
+        #print("checksums after translate_from_Json", json_string)
 
     # Check chunk if it is inside chunkList
 
@@ -228,8 +228,8 @@ if option == 'download':
 
                # If it exists then remove it from the localChecksums
                 if chunk_number is not None:
-                    print(chunk_number)
-                    print(chunk)
+                    #print(chunk_number)
+                    #print(chunk)
 
                     localChecksums.remove(checksums.__getitem__(chunk_number))
                     old_file_list.append(
@@ -258,7 +258,7 @@ if option == 'download':
                     if not chunk:
                         break
                     # Hashes and then checks it against the list that the server sent
-                    print(chunk)
+                   #print(chunk)
                     chunk_number = checksums.get_chunk(chunk.encode())
 
                    # If it exists then remove it from the localChecksums
@@ -268,12 +268,13 @@ if option == 'download':
                         # continue
                         # Just offset by one, read from that part of the file, and then move on
                     else:
-                        # continue
-                        print("download was interrupted before")
+                        continue
+                        #print("download was interrupted before")
                         # TEMP_LOG should not fall into this branch unless it reach the last short block
                         # because everything else in TEMP_LOG are requested blocks from server
         except OSError:
-            print('no temp_log in current directry')
+           #print('no temp_log in current directry')
+            pass
 
 
     # After comparation is done, then send the request list to the server
@@ -297,21 +298,21 @@ if option == 'download':
                 # append received data by the end
                 # else reset the offset to the end of last whole chunk
                 # overwrite the short chunck
-                print("is file in the path " + str(os.path.exists(temp_log_path) ))
+                #print("is file in the path " + str(os.path.exists(temp_log_path) ))
                 if not os.path.exists(temp_log_path):
                     with open(temp_log_path,'w'):
                         assert os.path.exists(temp_log_path)
-                        print("created ", temp_log_path)
+                        #print("created ", temp_log_path)
                         pass
                 with open(temp_log_path, 'r+') as temp_log:
                     file_size = os.stat(temp_log_path).st_size
                     temp_log.seek(file_size//BLOCK_SIZE*BLOCK_SIZE)
                     temp_log.write(data.decode())
 
-                print("localChecksums length",len(localChecksums))
-                print("checksums length",len(checksums))
-                print("localChecksums",localChecksums.chunks)
-                print("checksums data", checksums.get_chunk(data))
+                #print("localChecksums length",len(localChecksums))
+                #print("checksums length",len(checksums))
+                #print("localChecksums",localChecksums.chunks)
+                #print("checksums data", checksums.get_chunk(data))
                 # have a bug!!!!! get chunck data doesn't exit in local checksums
                 localChecksums.remove(checksums.chunks[checksums.get_chunk(data)])
 

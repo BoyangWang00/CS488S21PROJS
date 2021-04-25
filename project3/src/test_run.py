@@ -5,8 +5,6 @@ from os import path
 
 HERE = path.abspath(path.dirname(__file__))
 
-print("HERE",HERE)
-
 child1 = subprocess.Popen(["python3", "server.py", "50005"],cwd = HERE)
 
 subprocess.run(["python3", "client.py", '', "50005", "download", "./test/1/NEW", "./test/1/OLD"],cwd = HERE, check=True)
@@ -32,6 +30,8 @@ subprocess.run(["python3", "client.py", '', "50003", "download", "./test/3/NEW",
 assert child1.wait() == 0
 
 subprocess.run(["diff", "./test/3/NEW", "./test/3/OLD"], cwd = HERE, check = True)
+
+assert (not path.exists("./test/3/OLDTEMP_LOG"))
 
 
 
