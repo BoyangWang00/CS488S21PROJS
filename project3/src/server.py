@@ -130,9 +130,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     print("First signal is received")
     # Call checksumfiles to make the NEW block list
     chunkList = checksums_file("NEW")
-    print(chunkList)
+    print("chunklist is ",chunkList)
     json_string = {'chunks':chunkList.chunks,'chunk_sigs':chunkList.chunk_sigs}
-    print(json_string)
+    print("json_string",json_string)
 
     # Send checksums_file (which is the hashed list of the file) to client
 
@@ -191,7 +191,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
                 last_chunk = chunk
                 continue
             else:
-                print("send chunck ", chunk)
+                print("send chunck ", chunk,'end')
                 connection_socket.sendall(chunk.encode())
 
         print("send last chunck ", last_chunk)
