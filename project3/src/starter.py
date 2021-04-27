@@ -34,7 +34,7 @@ class Chunks(object):
     Data stucture that holds rolling checksums for file B
     """
     def __init__(self):
-        self.chunks = []
+        self.chunks = [] 
         self.chunk_sigs = {}
 
     def append(self, sig):
@@ -80,7 +80,6 @@ def checksums_file(fn):
             )
             fn_offset += BLOCK_SIZE
         print("chuncks is",chunks.chunks, chunks.chunk_sigs)
-        print('chuncks sigs index', chunks.chunk_sigs[29819038]['1181c1834012245d785120e3505ed169'])
         return chunks
 
 def _get_block_list(file_one, file_two):
@@ -107,7 +106,6 @@ def _get_block_list(file_one, file_two):
                 break
 
             chunk_number = checksums.get_chunk(chunk.encode())
-            print("chunk number", chunk_number)
 
             if chunk_number is not None:
                 offset += BLOCK_SIZE
