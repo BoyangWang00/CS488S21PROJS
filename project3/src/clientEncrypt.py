@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 
 import socket
+import nacl.secret
 import nacl.utils
-from nacl.public import PrivateKey, Box, PublicKey
+from nacl.public import PrivateKey, Box
 from nacl.encoding import Base64Encoder
+import base64
 import json
 
 HOST = '127.0.0.1'  # The server's hostname or IP address
 PORT = 65432        # The port used by the server
+
 
 class Chunks(object):
     """
@@ -47,34 +50,50 @@ class Chunks(object):
     def __len__(self):
         pass
 
-skClient = PrivateKey.generate()
-pkClient = skClient.public_key
+
+clientSecretKey = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
-    #chunk.append(msg)
+    # chunk.append(msg)
 
-    #Receive Server's public key
-    pkServer = s.recv(1024)
+    # Receive Server's public key
+    #pkServer = s.recv(1024)
 
-    #Send client public key
-    s.sendall(pkClient.encode(Base64Encoder))
+    # Send client public k
+    clientBox = nacl.secret.SecretBox(clientSecretKey)
 
-    #Send message
-    msg = {1:'hi', 2: 'there'}
-    str_json = json.dumps(msg)
-    s.sendall(str_json.encode())
-    data = s.recv(1024)
-    print('pkServer', pkServer)
-    print('skClient', skClient)
-    try:
-        print('pkServer decoded', pkServer.decode())
-    except:
-        print("eh")
+    message = b'This is client message'
+    nonce = nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
+    # Encrypt Box
+    encrypted = clientBox.encrypt(message, nonce)
+    ctext = encrypted.ciphertext
+    # Receiving the encryptedBox
+    s.sendall(encrypted)
 
-    client_box = Box(skClient, pkServer.decode())
-    
-    data = client_box.decrypt(data)
+    box = s.recv(1024)
 
-print(data.decode())
-print('Received', repr(data))
+    serverBox = nacl.secret.SecretBox(clientSecretKey)
+    print("Cipher Text is: ", ctext)
+    serverMessage = serverBox.decrypt(box)
+    serverMessage = serverMessage.decode('utf-8')
+    print(serverMessage)
+
+    # Send message
+#     msg = {1:'hi', 2: 'there'}
+#     str_json = json.dumps(msg)
+#     s.sendall(str_json.encode())
+#     data = s.recv(1024)
+#     print('pkServer', pkServer)
+#     print('skClient', skClient)
+#     print('pkServer decoded', pkServer.decode())
+
+#     print("eh")
+
+#     client_box = Box(skClient, pkServer.decode())
+
+#     data = client_box.decrypt(data)
+
+# print(data.decode())
+# print('Received', repr(data))
