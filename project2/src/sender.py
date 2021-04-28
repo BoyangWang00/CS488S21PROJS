@@ -11,6 +11,7 @@ srtt = 0
 srttdev = 0
 timeout = 0
 
+<<<<<<< HEAD
 #     srtt[n] = alpha * rtt_sample + (1 - alpha) * srtt[n-1]
 #     dev_sample = |rtt_sample - srtt[n]|
 #     srttdev[n] = beta * dev_sample + (1 - beta) * srttdev[n-1]
@@ -35,6 +36,28 @@ def srtt_cal(ack_receiving_time, packet_sent_out_time, srtt, srttdev):
     return timeout, srtt, srttdev
 
 
+=======
+ #     srtt[n] = alpha * rtt_sample + (1 - alpha) * srtt[n-1]
+ #     dev_sample = |rtt_sample - srtt[n]|
+ #     srttdev[n] = beta * dev_sample + (1 - beta) * srttdev[n-1]
+ #     timeout = srtt[n] + k * srttdev[n]
+ #     Assume: alpha = beta = 0.125 ; k=4
+
+def srtt_cal(ack_receiving_time, packet_sent_out_time,srtt,srttdev):
+    rtt_sample = ack_receiving_time - packet_sent_out_time
+    if srtt == 0:
+        timeout = rtt_sample
+    else:
+        srtt = srtt * 0.875 + rtt_sample*0.125
+        print("srtt is ", srtt)
+        dev_sample = abs(rtt_sample - srtt)
+        print("dev_sample is ", dev_sample)
+        srttdev = 0.875 * srttdev + 0.125 * dev_sample
+        print("srttdev is ", srttdev)
+        timeout = srtt + 4*srttdev
+    return timeout, srtt, srttdev
+
+>>>>>>> 489886dfbff8f6a5103af6d1d0cf9ccfa587d1a8
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.setblocking(0)
 host = sys.argv[1]
@@ -45,7 +68,11 @@ addr = (host, port)
 # Setting up the deque and the information
 total_data = 0
 ack_data = 0
+<<<<<<< HEAD
 buffer_size = 20
+=======
+buffer_size = 30
+>>>>>>> 489886dfbff8f6a5103af6d1d0cf9ccfa587d1a8
 sender_datagram_buffer = collections.deque(maxlen=buffer_size)
 DatagramInFlight = collections.namedtuple(
     'DatagramInFlight', ['number', 'time', 'data'])
@@ -55,25 +82,42 @@ datagram_number = 0
 start_time = time.time()
 
 end_of_file = False
+<<<<<<< HEAD
 sender_packet_count = {}
 receiver_closed = False
 
 try:
     # try to read first batch of datagram from stdin
+=======
+sender_packet_count={}
+receiver_closed = False
+
+try:
+# try to read first batch of datagram from stdin
+>>>>>>> 489886dfbff8f6a5103af6d1d0cf9ccfa587d1a8
     for i in range(buffer_size):
         data = sys.stdin.read(buf)
         total_data += len(data)
 
+<<<<<<< HEAD
         # serilize header and data
+=======
+        #serilize header and data
+>>>>>>> 489886dfbff8f6a5103af6d1d0cf9ccfa587d1a8
         b_data = json.dumps({datagram_number: data})
 
         s.sendto(b_data.encode(), addr)  # send regular packet
         sender_packet_count[datagram_number] = 1
         #print("{} bytes have been sent ...".format(total_data))
 
+<<<<<<< HEAD
         datagram_tuple = DatagramInFlight(
             number=datagram_number, time=time.time(), data=b_data)
         sender_datagram_buffer.insert(i, datagram_tuple)
+=======
+        datagram_tuple = DatagramInFlight(number=datagram_number,time = time.time(), data = b_data)
+        sender_datagram_buffer.insert(i,datagram_tuple)
+>>>>>>> 489886dfbff8f6a5103af6d1d0cf9ccfa587d1a8
         datagram_number += 1
         #print("current data is type is ", type(data))
         if data == '':    # when we reach EOF we send out '' first and then break loop
@@ -90,6 +134,7 @@ while len(sender_datagram_buffer) > 0 and receiver_closed != True:
     try:
         # receive AKC
         ack_data, addr = s.recvfrom(100)
+<<<<<<< HEAD
         # print("akc # is {}, datagram_number is {}".format(ack_data, datagram_number))
 
         ack_receiving_time = time.time()
@@ -145,6 +190,60 @@ while len(sender_datagram_buffer) > 0 and receiver_closed != True:
                     break
                 else:
                     # if ACK ! = datagram_tuple.number, check next datagram_tuple in buffer.
+=======
+        print("akc # is {}, datagram_number is {}".format(ack_data, datagram_number))
+
+        ack_receiving_time = time.time()
+
+        if ack_data.decode() == '-1':
+            print("receiver is closed")
+            receiver_closed = True
+            break
+        else:
+
+            for i in range(len(sender_datagram_buffer)):
+                #print("i is ", i ,"buffer_size is ",len(sender_datagram_buffer))
+                datagram_tuple = sender_datagram_buffer[i]
+
+                if int(ack_data.decode()) == datagram_tuple.number:
+                    #cal srtt for current ack
+                    timeout, srtt, srttdev = srtt_cal(ack_receiving_time, datagram_tuple.time,srtt,srttdev)
+                    print("srtt is", srtt)
+
+                    if end_of_file != True:
+                    # if ack we received is for datagram in buffer and we haven't reach the EOF
+                    # fetch new data and send it out
+                    # replace old datagram with new one
+                        data = sys.stdin.read(buf)
+                        total_data += len(data)
+                        sender_datagram_buffer.remove(datagram_tuple)
+                        if data == '':
+                            #After we send out the first empty string as a signal EOF
+                            #turn on end_of_file flag
+                            end_of_file = True
+                            b_data = json.dumps({datagram_number: data})
+                            s.sendto(b_data.encode(), addr)  # send regular packet
+                            sender_packet_count[datagram_number] = 1
+                        else:
+                            #serilize header and data
+                            b_data = json.dumps({datagram_number: data})
+                            s.sendto(b_data.encode(), addr)  # send regular packet
+                            sender_packet_count[datagram_number] = 1
+                        datagram_tuple_new = DatagramInFlight(number=datagram_number,time = time.time(), data = b_data)
+                        sender_datagram_buffer.insert(i,datagram_tuple_new)
+                        datagram_number += 1
+
+
+                    else:
+                    # we already reached EOF and already sent out '';
+                    # thus only remove datagram from buffer
+                        sender_datagram_buffer.remove(datagram_tuple)
+
+                    #after taking care of ack break out loop.
+                    break
+                else:
+                    #if ACK ! = datagram_tuple.number, check next datagram_tuple in buffer.
+>>>>>>> 489886dfbff8f6a5103af6d1d0cf9ccfa587d1a8
                     pass
 
     except socket.error as e:
@@ -156,6 +255,7 @@ while len(sender_datagram_buffer) > 0 and receiver_closed != True:
                 # print(len(sender_datagram_buffer))
                 datagram_tuple = sender_datagram_buffer[i]
                 if time.time() - datagram_tuple.time > timeout:
+<<<<<<< HEAD
                     resend_time = time.time()
                     # serilize header and data
                     b_data = datagram_tuple.data
@@ -167,6 +267,18 @@ while len(sender_datagram_buffer) > 0 and receiver_closed != True:
                     s.sendto(b_data.encode(), addr)
                     sender_packet_count[datagram_tuple.number] += 1
                     #print("send again b/c time out")
+=======
+                        resend_time = time.time()
+                        #serilize header and data
+                        b_data = datagram_tuple.data
+                        sender_datagram_buffer[i] = sender_datagram_buffer[i]._replace(time = resend_time)
+                        assert sender_datagram_buffer[i].time == resend_time
+                        print("resend b/c time out datagram number is", datagram_tuple.number)
+                        # resend the packet
+                        s.sendto(b_data.encode(), addr)
+                        sender_packet_count[datagram_tuple.number] += 1
+                        #print("send again b/c time out")
+>>>>>>> 489886dfbff8f6a5103af6d1d0cf9ccfa587d1a8
 
 s.close()
 end_time = time.time()
@@ -193,4 +305,8 @@ print("Sent {} bytes in {} seconds: {} kB/s".format(total_data,
 print("srtt is ", srtt)
 exit()
 
+<<<<<<< HEAD
 # print(sender_packet_count)
+=======
+#print(sender_packet_count)
+>>>>>>> 489886dfbff8f6a5103af6d1d0cf9ccfa587d1a8

@@ -18,9 +18,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         while True:
             # Receiving client's public key
             data = conn.recv(1024)
-            print("Received Box")
+            print("Server received Box from client")
             conn.sendall(data)
-            print("Sending Box back")
+            print("Server sending Box back to client")
 
             if not data:
                 break
