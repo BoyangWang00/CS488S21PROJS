@@ -125,10 +125,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     connection_socket, addr = serverSocket.accept()
 
     # Server will receive the signal that client wants to update
-    File_path = connection_socket.recv(1024).decode()  # or 1 byte? try catch?
-    #print("receive msg is s: ",File_path)
+    File_path = connection_socket.recv(1024).decode()  
 
-    #print("First signal is received")
     # Call checksumfiles to make the NEW block list
     chunkList = checksums_file(File_path)
     #print("chunklist is ",chunkList)
@@ -155,7 +153,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
         #print("data is ", data)
         #print("last two digit is: ",data.decode()[-2:])
         received_request += data
-        if data.decode()[-2:] == '-1':
+        if data.decode()[-2:] == '-1': #end of data to receive
             break
     #print("The whole received data is ",received_request)
 

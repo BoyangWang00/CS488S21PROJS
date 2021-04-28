@@ -169,9 +169,19 @@ def translate_from_Json(string):
 serverName = sys.argv[1]
 serverPort = int(sys.argv[2])
 serverAddress = (serverName, serverPort)
-option = sys.argv[3]
-src_path_new = sys.argv[4]
-des_path_old = sys.argv[5]
+option = sys.argv[3] #down or upload
+# src_path_new = sys.argv[4] #
+# des_path_old = sys.argv[5] 
+
+
+#Encryption: secret key, box
+key = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+box = nacl.secret.SecretBox(key)
+nonce = 9
+
+#Take user input
+src_path_new = input("Enter source file path:")
+des_path_old = input("Enter destination file path:")
 old_file_name = os.path.basename(des_path_old)
 directry_path = os.path.dirname(des_path_old)
 temp_log_path = os.path.join(directry_path, old_file_name+'TEMP_LOG')
@@ -181,9 +191,11 @@ if option == 'download':
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
         #print("client is trying to connect to ", serverPort)
         clientSocket.connect(serverAddress)
-        # clientSocket.setblocking(0) # client non-blocking to receive list from server (?)
+
+        #encrypted = box.encrypt(message, nonce)
         # Client needs to send server a signal that it wants to update
         clientSocket.sendall(src_path_new.encode())
+
 
         # Receive List from the server = ChunkList
         received_data = b''
@@ -240,12 +252,11 @@ if option == 'download':
                     )
                 )
                     offset += BLOCK_SIZE
-                    # continue
-                    # Just offset by one, read from that part of the file, and then move on
+                # Just offset by one, read from that part of the file, and then move on
                 else:
-                    offset += 1
+                    offset += 1 #if no match
                     f.seek(offset)
-                    # continue
+       
             shopping_list_len_before_templog = len(localChecksums.chunks)
 
     # TODO: need to add code to check whether there is a temp_log file under current directry.
@@ -338,7 +349,48 @@ if option == 'download':
     exit()
 
 elif option == 'upload':
-    print("Sorry, we don't support upload now")
+    #print("Sorry, we don't support upload now")
+    #send upload request to server
+    clientSocket.sendall(dest_path_new.encode()) #
+    while True:
+        data = clientSocket.recv(1024)
+        received_data += data #OLD file list
+        if data.decode()[-2:] == '-1':
+            break
+        
+        #Compare received OLD list with current client NEW list:
+        old_checksums = translate_from_Json(received_data.decode()[:-2])
+        json_string = {'chunks':old_checksums.chunks,'chunk_sigs':old_checksums.chunk_sigs}
+        
+        localChecksums = old_checksums.copy() 
+        list_to_send = []
+        data_list_to_send = []
+        offset = 0
+        new_file_name = os.path.basename(src_path_new) #(?)
+        new_file_list = checksums_file(new_file_name) #client's new longer hashlist
+        
+        for block in new_file_list.chunks:
+            if block.md5 is not in localChecksums.chunks.md5: #new block not in old list
+                list_to_send.append(block) #no raw data
+                
+                #if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
+        
+        #Create a list of actual data blocks
+        with open(src_path_new) as f:
+            for block in new_file_list.chunks:
+                f.seek(block.offset)
+                chunk = f.read(BLOCK_SIZE) #raw data
+                # Until EOF
+                if not chunk:
+                    break
+                data_list_to_send.append(chunk)               
+        
+        #Send the data blocks and offset list to reconstruct
+        to_send = {'data_list_to_send':data_list_to_send, 'new_file_list.chunks':new_file_list.chunks}}
+        data_json = json.dumps(to_send)
+        clientSocket.sendall(data_json.encode())
+        clientSocket.sendall('-1'.encode()) 
+        
 
 else:
     print("wrong option")
