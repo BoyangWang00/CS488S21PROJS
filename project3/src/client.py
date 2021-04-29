@@ -146,7 +146,7 @@ def reconstruct_file(OLD, TEMP_LOG, server_list, old_file_list):
                     data = temp_log.read(BLOCK_SIZE)
                     #print("data from temp_log", data)
                     constructer.write(data)
-    
+
     old.close()
     if os.path.exists(TEMP_LOG):
         temp_log.close()
@@ -171,13 +171,13 @@ serverPort = int(sys.argv[2])
 serverAddress = (serverName, serverPort)
 option = sys.argv[3] #down or upload
 # src_path_new = sys.argv[4] #
-# des_path_old = sys.argv[5] 
+# des_path_old = sys.argv[5]
 
 
 #Encryption: secret key, box
-key = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
-box = nacl.secret.SecretBox(key)
-nonce = 9
+#key = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+#box = nacl.secret.SecretBox(key)
+#nonce = 9
 
 #Take user input
 src_path_new = input("Enter source file path:")
@@ -194,7 +194,9 @@ if option == 'download':
 
         #encrypted = box.encrypt(message, nonce)
         # Client needs to send server a signal that it wants to update
-        clientSocket.sendall(src_path_new.encode())
+        signal = (src_path_new, option)
+        signal = " ".join(map(str,signal))
+        clientSocket.sendall(signal.encode())
 
 
         # Receive List from the server = ChunkList
@@ -256,7 +258,7 @@ if option == 'download':
                 else:
                     offset += 1 #if no match
                     f.seek(offset)
-       
+
             shopping_list_len_before_templog = len(localChecksums.chunks)
 
     # TODO: need to add code to check whether there is a temp_log file under current directry.
@@ -288,7 +290,7 @@ if option == 'download':
            #print('no temp_log in current directry')
             pass
 
-        #for test porpose only, if CHECK_SHOPPING_LIST_SHOULD_BE_SHORT is on, which means we preset the 
+        #for test porpose only, if CHECK_SHOPPING_LIST_SHOULD_BE_SHORT is on, which means we preset the
         #temp_log in directory. so shopping list should be shorter than shopping_list_len_before_templog
         if os.environ.get('CHECK_SHOPPING_LIST_SHOULD_BE_SHORT') == '1':
             #print(len(localChecksums.chunks), shopping_list_len_before_templog)
@@ -304,7 +306,7 @@ if option == 'download':
         while localChecksums:
 
             # client start to receiv data chuncks from server
-            # call a while loop to receve all the data send by server,
+            # call a while loop to receive all the data send by server,
             # if server reach to EOF, clientSocket.recv() will return 0, break the loop
             data = clientSocket.recv(BLOCK_SIZE)  # how many B recv?
             #print("recevied data is :",data.decode())
@@ -328,8 +330,19 @@ if option == 'download':
                 #print("checksums length",len(checksums))
                 #print("localChecksums",localChecksums.chunks)
                 #print("checksums data", checksums.get_chunk(data))
+
                 # have a bug!!!!! get chunck data doesn't exit in local checksums
-                localChecksums.remove(checksums.chunks[checksums.get_chunk(data)])
+                # ^ is this still an issue?
+
+                #print("Printing local checksums: \n", localChecksums)
+                #print("Length of local checksums:", len(localChecksums))
+                #try:
+                #    print("Checksums.get_chunk(data) =", checksums.chunks[checksums.get_chunk(data)])
+                    localChecksums.remove(checksums.chunks[checksums.get_chunk(data)])
+                #except TypeError:
+                #    print("Type Error :(")
+                #    print("Data:", data)
+                #    print("Data Type:", type(data))
 
     # at this point, everything client requested for is saved in OLD_TEMP file,
     # we can close the TCP connection and start re-contruct the NEW file at client's end
@@ -347,50 +360,71 @@ if option == 'download':
         os.remove(temp_log_path)
     print(des_path_old, "download completed")
     exit()
-
 elif option == 'upload':
     #print("Sorry, we don't support upload now")
     #send upload request to server
-    clientSocket.sendall(dest_path_new.encode()) #
-    while True:
-        data = clientSocket.recv(1024)
-        received_data += data #OLD file list
-        if data.decode()[-2:] == '-1':
-            break
-        
-        #Compare received OLD list with current client NEW list:
-        old_checksums = translate_from_Json(received_data.decode()[:-2])
-        json_string = {'chunks':old_checksums.chunks,'chunk_sigs':old_checksums.chunk_sigs}
-        
-        localChecksums = old_checksums.copy() 
-        list_to_send = []
-        data_list_to_send = []
-        offset = 0
-        new_file_name = os.path.basename(src_path_new) #(?)
-        new_file_list = checksums_file(new_file_name) #client's new longer hashlist
-        
-        for block in new_file_list.chunks:
-            if block.md5 is not in localChecksums.chunks.md5: #new block not in old list
-                list_to_send.append(block) #no raw data
-                
-                #if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
-        
-        #Create a list of actual data blocks
-        with open(src_path_new) as f:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
+        #print("client is trying to connect to ", serverPort)
+        clientSocket.connect(serverAddress)
+
+        #encrypted = box.encrypt(message, nonce)
+        # Client needs to send server a signal that it wants to update
+        signal = (des_path_old, option)
+        signal = " ".join(map(str,signal))
+        print("Signal is ", signal)
+        clientSocket.sendall(signal.encode())
+        print("inside upload with statement")
+        received_data = b''
+
+        while True:
+            print("inside while true statement")
+            data = clientSocket.recv(1024)
+            #clientSocket.sendall(option)
+            print("Data is ", data)
+            print("data decoded is:", data.decode())
+            received_data += data #OLD file list
+            print("Recieved data = ", received_data)
+            if data.decode()[-2:] == '-1':
+                break
+
+            #Compare received OLD list with current client NEW list:
+            old_checksums = translate_from_Json(received_data.decode()[:-2])
+            json_string = {'chunks':old_checksums.chunks,'chunk_sigs':old_checksums.chunk_sigs}
+
+            localChecksums = old_checksums.copy()
+            list_to_send = []
+            data_list_to_send = []
+            offset = 0
+            new_file_name = os.path.basename(src_path_new) #(?)
+            new_file_list = checksums_file(new_file_name) #client's new longer hashlist
+
+            print("New file name is ", new_file_name)
+            print("New file list is ", new_file_list)
+
             for block in new_file_list.chunks:
-                f.seek(block.offset)
-                chunk = f.read(BLOCK_SIZE) #raw data
-                # Until EOF
-                if not chunk:
-                    break
-                data_list_to_send.append(chunk)               
-        
-        #Send the data blocks and offset list to reconstruct
-        to_send = {'data_list_to_send':data_list_to_send, 'new_file_list.chunks':new_file_list.chunks}}
-        data_json = json.dumps(to_send)
-        clientSocket.sendall(data_json.encode())
-        clientSocket.sendall('-1'.encode()) 
-        
+                print("inside for block in new_file_list loop")
+                if block.md5 not in localChecksums.chunks.md5: #new block not in old list
+                    list_to_send.append(block) #no raw data
+
+                    #if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
+
+            #Create a list of actual data blocks
+            with open(src_path_new) as f:
+                for block in new_file_list.chunks:
+                    print("inside upload with open src path new file, in for in new file list loop ")
+                    f.seek(block.offset)
+                    chunk = f.read(BLOCK_SIZE) #raw data
+                    # Until EOF
+                    if not chunk:
+                        break
+                    data_list_to_send.append(chunk)
+
+            #Send the data blocks and offset list to reconstruct
+            to_send = {'data_list_to_send':data_list_to_send, 'new_file_list.chunks':new_file_list.chunks}
+            data_json = json.dumps(to_send)
+            clientSocket.sendall(data_json.encode())
+            clientSocket.sendall('-1'.encode())
+
 
 else:
     print("wrong option")
