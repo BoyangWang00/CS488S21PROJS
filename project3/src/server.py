@@ -4,6 +4,7 @@ import zlib
 import socket
 import sys
 import json
+import os
 
 # Server has new file α
 BLOCK_SIZE = 36
@@ -113,6 +114,19 @@ def translate_from_Json(chunks,string):
     #print("return_chunk is ", chunks)
 
 
+def translate_from_list(chunks,list_local):
+    for sigs in list_local:
+        chunks.append(
+            Signature(
+                adler32 = sigs[1],
+                md5=sigs[0],
+                offset=sigs[2]
+                )
+            )
+    #print("return_chunk is ", chunks)
+
+
+
 ServerName = ''
 ServerPort = int(sys.argv[1])
 #File_path = sys.argv[2]
@@ -125,9 +139,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     connection_socket, addr = serverSocket.accept()
 
     # Server will receive the signal that client wants to update
-    File_path, client_option = connection_socket.recv(1024).decode()
+    client_string = connection_socket.recv(1024).decode()
+    File_path, client_option = client_string.split(" ")
     print("File path: ", File_path)
     print("Client option: ", client_option)
+    file_name = os.path.basename(File_path)
     # Call checksumfiles to make the NEW block list
     chunkList = checksums_file(File_path)
     #print("chunklist is ",chunkList)
@@ -140,16 +156,15 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     str_data = json.dumps(json_string)
     # send entire buffer, sendto() is only for UDP datagram
     print("String data: ", str_data)
-    connection_socket.sendall(str_data.encode())
+    connection_socket.sendall(str_data.encode())#need to append -1 by the end of string
     # client wants to either upload or download
-    #client_option = serverSocket.recv(1024)
+    # client_option = serverSocket.recv(1024)
+    # signal to inform client that no more data is sent
+    connection_socket.sendall('-1'.encode())
+
     if client_option == "download":
-            # signal to inform client that no more data is sent
-            connection_socket.sendall('-1'.encode())
 
-            # Server receives List from client
-            # receive request chuncks from client
-
+            # server receives requested chuncks from client
             received_request = b''
             while True:
                 # call a while loop to receve all the data send by server,
@@ -200,9 +215,59 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
                 if last_chunk != '':
                     #print("send last chunck ", last_chunk)
                     connection_socket.sendall(last_chunk.encode())
-    elif client_option.decode() == "upload":
+
+
+    elif client_option == "upload":
+        # server will receive data_list_to_send, which is the list of data chuncks that server doesn't have
+        # server will also receive new_file_list.chunks, which is a list of signatures in order. So that server
+        # can re-construct the new file based on this list
+        server_received_data = b''
+        while True:
+            # call a while loop to receve all the data send by server,
+            # if server reach to EOF, serversocket.recv() will return 0, break the loop
+            data = connection_socket.recv(1024)  # how many B recv?
+            print("recevied data is ", data)
+            #print("data is ", data)
+            #print("last two digit is: ",data.decode()[-2:])
+            server_received_data += data
+            if data.decode()[-2:] == '-1': #end of data to receive
+                print("we recevied the last chunk")
+                break
+        # translate data into a dictionary {'data_list_to_send':data_list_to_send, 'new_file_list.chunks':new_file_list.chunks}
+        print("the string is :",server_received_data.decode())
+        json_dict = json.loads(server_received_data[:-2].decode())
+
+        data_chunk_list = json_dict.get("data_list_to_send")
+        print("data_chunk_list", data_chunk_list)
+        hash_list = Chunks()
+        translate_from_list(hash_list,json_dict.get("new_file_list.chunks"))
+
+        print("hash_list", hash_list)
+
+        list_to_write = []
+        ith_chunk_in_data_chunk_list = 0
+        for block in hash_list.chunks:
+            if block.md5 in [items.md5 for items in chunkList.chunks]: 
+                #open the file and read chunk data; append data to list_to_write
+                offset = hash_list.get_offset(block.md5)
+                with open(File_path) as f:
+                    f.seek(offset)
+                    chunk_data = f.read(BLOCK_SIZE)
+                    list_to_write.append(chunk_data)
+            else:
+                # assume the data_chunk_list has all the missing data in order
+                # 
+                list_to_write.append(data_chunk_list[ith_chunk_in_data_chunk_list])
+                ith_chunk_in_data_chunk_list += 1
+
+        with open("Updated_file"+file_name,"w") as f:
+            for block in list_to_write:
+                f.write(block)
+
+        os.rename("Updated_file"+file_name,file_name)
+        print("Upload is complete")
+
+        connection_socket.sendall("Upload is complete".encode())
 
 
         exit(0)
-    # May not need the following steps- BW
-    # Server will assign a header or a tracker to each block size of bytes that it will send to the Client

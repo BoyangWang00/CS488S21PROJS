@@ -5,6 +5,7 @@ import socket
 import sys
 import os
 import json
+import time
 
 # Client has old file β
 BLOCK_SIZE = 36
@@ -170,8 +171,8 @@ serverName = sys.argv[1]
 serverPort = int(sys.argv[2])
 serverAddress = (serverName, serverPort)
 option = sys.argv[3] #down or upload
-# src_path_new = sys.argv[4] #
-# des_path_old = sys.argv[5]
+#src_path_new = sys.argv[4] #
+#des_path_old = sys.argv[5]
 
 
 #Encryption: secret key, box
@@ -336,13 +337,13 @@ if option == 'download':
 
                 #print("Printing local checksums: \n", localChecksums)
                 #print("Length of local checksums:", len(localChecksums))
-                #try:
-                #    print("Checksums.get_chunk(data) =", checksums.chunks[checksums.get_chunk(data)])
+                try:
+                    print("Checksums.get_chunk(data) =", checksums.chunks[checksums.get_chunk(data)])
                     localChecksums.remove(checksums.chunks[checksums.get_chunk(data)])
-                #except TypeError:
-                #    print("Type Error :(")
-                #    print("Data:", data)
-                #    print("Data Type:", type(data))
+                except TypeError:
+                    print("Type Error :(")
+                    print("Data:", data)
+                    print("Data Type:", type(data))
 
     # at this point, everything client requested for is saved in OLD_TEMP file,
     # we can close the TCP connection and start re-contruct the NEW file at client's end
@@ -387,43 +388,44 @@ elif option == 'upload':
             if data.decode()[-2:] == '-1':
                 break
 
-            #Compare received OLD list with current client NEW list:
-            old_checksums = translate_from_Json(received_data.decode()[:-2])
-            json_string = {'chunks':old_checksums.chunks,'chunk_sigs':old_checksums.chunk_sigs}
+        #Compare received OLD list with current client NEW list:
+        old_checksums = translate_from_Json(received_data.decode()[:-2])
+        json_string = {'chunks':old_checksums.chunks,'chunk_sigs':old_checksums.chunk_sigs}
 
-            localChecksums = old_checksums.copy()
-            list_to_send = []
-            data_list_to_send = []
-            offset = 0
-            new_file_name = os.path.basename(src_path_new) #(?)
-            new_file_list = checksums_file(new_file_name) #client's new longer hashlist
+        localChecksums = old_checksums.copy()
+        data_list_to_send = []
+        offset = 0
+        new_file_name = os.path.basename(src_path_new) #(?)
+        new_file_list = checksums_file(new_file_name) #client's new longer hashlist
 
-            print("New file name is ", new_file_name)
-            print("New file list is ", new_file_list)
+        print("New file name is ", new_file_name)
+        print("New file list is ", new_file_list)
 
-            for block in new_file_list.chunks:
-                print("inside for block in new_file_list loop")
-                if block.md5 not in localChecksums.chunks.md5: #new block not in old list
-                    list_to_send.append(block) #no raw data
-
-                    #if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
-
-            #Create a list of actual data blocks
-            with open(src_path_new) as f:
-                for block in new_file_list.chunks:
-                    print("inside upload with open src path new file, in for in new file list loop ")
+        #Create a list of actual data blocks that need to be sent over to server
+        for block in new_file_list.chunks:
+            print("inside for block in new_file_list loop")
+            if block.md5 not in [items.md5 for items in localChecksums.chunks]: #new block not in old list
+                with open(src_path_new) as f:
                     f.seek(block.offset)
-                    chunk = f.read(BLOCK_SIZE) #raw data
-                    # Until EOF
+                    chunk = f.read(BLOCK_SIZE)
+
                     if not chunk:
                         break
                     data_list_to_send.append(chunk)
 
-            #Send the data blocks and offset list to reconstruct
-            to_send = {'data_list_to_send':data_list_to_send, 'new_file_list.chunks':new_file_list.chunks}
-            data_json = json.dumps(to_send)
-            clientSocket.sendall(data_json.encode())
-            clientSocket.sendall('-1'.encode())
+
+                #if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
+
+        #Send the data blocks and offset list to reconstruct
+        to_send = {'data_list_to_send':data_list_to_send, 'new_file_list.chunks':new_file_list.chunks}
+        data_json = json.dumps(to_send)
+        clientSocket.sendall(data_json.encode())
+        time.sleep(1)
+        clientSocket.sendall('-1'.encode())
+
+        #client should receive "Upload is finished" and print it out
+        finish_signal = clientSocket.recv(1024)
+        print(finish_signal.decode())
 
 
 else:
