@@ -5,6 +5,9 @@ import socket
 import sys
 import json
 import os
+from nacl.public import PrivateKey, Box
+from nacl.encoding import Base64Encoder
+
 
 # Server has new file α
 BLOCK_SIZE = 36
