@@ -66,6 +66,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
     message = b'This is client message'
     nonce = nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
+    print(type(nonce))
+    print('nonce ',nonce)
+    print('nonce ',nonce.decode("utf-8", 'ignore'))
     # Encrypt Box
     encrypted = clientBox.encrypt(message, nonce)
     ctext = encrypted.ciphertext

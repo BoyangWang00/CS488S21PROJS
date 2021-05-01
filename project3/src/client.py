@@ -6,10 +6,14 @@ import sys
 import os
 import json
 import time
+import nacl.secret
+import nacl.utils
+from nacl.public import PrivateKey, Box
+from nacl.encoding import Base64Encoder
 
 # Client has old file β
 BLOCK_SIZE = 36
-
+clientSecretKey = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
 # Hasher
 # Helper functions
 # ----------------
@@ -96,14 +100,24 @@ def checksums_file(fn):
     chunks = Chunks()
     with open(fn) as f:
         while True:
-            chunk = f.read(BLOCK_SIZE)
+            chunk = f.read(BLOCK_SIZE) #raw data, String type
+           
+            chunk = bytes(chunk, 'utf-8')
+            #put raw data in the box:
+            clientBox = nacl.secret.SecretBox(clientSecretKey) # Send client public k
+            nonce = b'w\x85St\xbdRd#\xb3\x10h#[\xbd\xbd\xc5\x13\x94\x9f\x84\xc5\\\x91C' #nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
+            print(type(nonce))
+            encrypted_box = clientBox.encrypt(chunk, nonce)
+            #ctext = encrypted.ciphertext
+
             if not chunk:
                 break
-
+            
+            #Turn encrypted box into hash and put hash into list
             chunks.append(
                 Signature(
-                    adler32=adler32_chunk(chunk.encode()),
-                    md5=md5_chunk(chunk.encode()),
+                    adler32=adler32_chunk(encrypted_box),
+                    md5=md5_chunk(encrypted_box),
                     offset=fn_offset
                 )
             )
@@ -175,11 +189,6 @@ option = sys.argv[3] #down or upload
 #des_path_old = sys.argv[5]
 
 
-#Encryption: secret key, box
-#key = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
-#box = nacl.secret.SecretBox(key)
-#nonce = 9
-
 #Take user input
 src_path_new = input("Enter source file path:")
 des_path_old = input("Enter destination file path:")
@@ -187,13 +196,14 @@ old_file_name = os.path.basename(des_path_old)
 directry_path = os.path.dirname(des_path_old)
 temp_log_path = os.path.join(directry_path, old_file_name+'TEMP_LOG')
 
+
+
 if option == 'download':
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
         #print("client is trying to connect to ", serverPort)
         clientSocket.connect(serverAddress)
 
-        #encrypted = box.encrypt(message, nonce)
         # Client needs to send server a signal that it wants to update
         signal = (src_path_new, option)
         signal = " ".join(map(str,signal))
@@ -205,13 +215,16 @@ if option == 'download':
         while True:
             # call a while loop to receve all the data send by server,
             # if server reach to EOF, clientSocket.recv() will return '-1', break the loop
-            data = clientSocket.recv(1024)  # how many B recv?
+            data = clientSocket.recv(1024) 
             #print("data is ", data)
             #print("last two digit is: ",data.decode()[-2:])
+            print('data ', data)
             received_data += data
             if data.decode()[-2:] == '-1':
                 break
         #print("The whole received data is ",received_data)
+
+        #TODO: Decrypt each box
 
     # decode from the server and you get the list of hashes
     # need to re-construct Chunks object based on json string that we received
@@ -362,7 +375,6 @@ if option == 'download':
     print(des_path_old, "download completed")
     exit()
 elif option == 'upload':
-    #print("Sorry, we don't support upload now")
     #send upload request to server
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
         #print("client is trying to connect to ", serverPort)
