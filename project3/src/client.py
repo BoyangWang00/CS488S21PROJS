@@ -10,6 +10,7 @@ import nacl.secret
 import nacl.utils
 from nacl.public import PrivateKey, Box
 from nacl.encoding import Base64Encoder
+import base64
 
 # Client has old file β
 BLOCK_SIZE = 36
@@ -99,16 +100,19 @@ def checksums_file(fn, client_path):
     chunks = Chunks()
     global key, nonce
     key, nonce = retrieveClientKey(client_path)
+    print("Key is : {} Nonce is: {}", key, nonce)
     print("FN is", fn)
     with open(fn) as f:
         while True:
             chunk = f.read(BLOCK_SIZE)
             # Send client public key
-            clientBox = nacl.secret.SecretBox(key)
+            print("Base64 Decoded: ", base64.b64decode(key))
+            clientBox = nacl.secret.SecretBox(base64.b64decode(key))
             # Encrypt Box
             print("Nonce is ", nonce)
             print("chunk is ", chunk)
-            encrypted = clientBox.encrypt(chunk.encode(), nonce)
+            encrypted = clientBox.encrypt(
+                chunk.encode(), base64.b64decode(nonce))
             # Receiving the encryptedBox
             #serverMessage = serverBox.decrypt(box)
             #serverMessage = serverMessage.decode('utf-8')
@@ -193,19 +197,24 @@ def retrieveClientKey(client_path):
             pass
     # write to clientInfo file
         with open(client_path, 'rb+') as client:
-            key = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
-            nonce = nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
-            print("key_nonce : is ", key, " ", nonce)
-            key_nonce = (key, nonce)
-            client_bytes_join = b" ".join(key_nonce)
+            key = nacl.utils.random(
+                nacl.secret.SecretBox.KEY_SIZE)
+            nonce = nacl.utils.random(
+                nacl.secret.SecretBox.NONCE_SIZE)
+            b64_key = base64.b64encode(key)
+            b64_nonce = base64.b64encode(nonce)
+            print("Key is {} nonce is {}", key, nonce)
+            print("Base64 Key is {} nonce is {}", b64_key, b64_nonce)
+            key_nonce = (b64_key, b64_nonce)
+            client_bytes_join = b"\n".join(key_nonce)
             client.write(client_bytes_join)
     else:
         if os.path.exists(client_path):
             with open(client_path, mode='rb+') as client:
-                temp_client = client.read(-1)
-                temp_client = temp_client.split(" ")
+                key_nonce = client.readlines()
+
+                print("Client read ", key_nonce)
                 #key_nonce = (key1, nonce2)
-                print("Client read ", temp_client)
 
                 #key_nonce = (key, nonce)
     return key_nonce
@@ -451,7 +460,7 @@ elif option == 'upload':
         #print("New file name is ", new_file_name)
         #print("New file list is ", new_file_list)
 
-        key, nonce = retrieveClientKey(client_path)
+        key1, nonce1 = retrieveClientKey(client_path)
 
         # Create a list of actual data blocks that need to be sent over to server
         for block in new_file_list.chunks:
@@ -462,14 +471,20 @@ elif option == 'upload':
                     f.seek(block.offset)
                     chunk = f.read(BLOCK_SIZE)
                     # Create client box with key
-                    clientBox = nacl.secret.SecretBox(key)
+                    print("Key Value is: ", base64.b64decode(key1))
+                    print("Key Type is: ", type(key))
+                    print("Nonce Value is: ", base64.b64decode(nonce1))
+                    print("Nonce Type is: ", type(nonce))
+                    clientBox = nacl.secret.SecretBox(base64.b64decode(key1))
                     # Encrypt Box with chunk and nonce
-                    encrypted = clientBox.encrypt(chunk.encode(), nonce)
+                    encrypted = clientBox.encrypt(
+                        chunk.encode(), base64.b64decode(nonce1))
+                    b64_encrypted = base64.b64encode(encrypted)
 
                     if not chunk:
                         # if no data
                         break
-                    data_list_to_send.append(encrypted)
+                    data_list_to_send.append(b64_encrypted.decode())
         print(data_list_to_send)
         # if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
 
