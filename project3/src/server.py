@@ -7,10 +7,13 @@ import json
 import os
 from nacl.public import PrivateKey, Box
 from nacl.encoding import Base64Encoder
+import base64
 
 
 # Server has new file α
-BLOCK_SIZE = 36
+DATA_BLOCK = 36
+HEADER_SIZE = 40
+BLOCK_SIZE = DATA_BLOCK+HEADER_SIZE
 
 # Hasher
 # Helper functions
@@ -80,13 +83,13 @@ class Chunks(object):
 
 # Build Chunks from a file
 # ------------------------
-def checksums_file(fn):
+def checksums_file_from_encryped(fn):
     """
     Returns object with checksums of file
     """
     fn_offset = 0
     chunks = Chunks()
-    with open(fn) as f:
+    with open(fn,'rb') as f:
         while True:
             chunk = f.read(BLOCK_SIZE)
             if not chunk:
@@ -94,8 +97,8 @@ def checksums_file(fn):
 
             chunks.append(
                 Signature(
-                    adler32=adler32_chunk(chunk.encode()),
-                    md5=md5_chunk(chunk.encode()),
+                    adler32=adler32_chunk(chunk),
+                    md5=md5_chunk(chunk),
                     offset=fn_offset
                 )
             )
@@ -148,12 +151,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     print("Client option: ", client_option)
     file_name = os.path.basename(File_path)
     # Call checksumfiles to make the NEW block list
-    chunkList = checksums_file(File_path)
+    chunkList = checksums_file_from_encryped(File_path)
     #print("chunklist is ",chunkList)
     json_string = {'chunks':chunkList.chunks,'chunk_sigs':chunkList.chunk_sigs}
     #print("json_string",json_string)
 
-    # Send checksums_file (which is the hashed list of the file) to client
+    # Send checksums_file_from_encryped (which is the hashed list of the file) to client
 
     # Necessary? create str from json-like-Python dict
     str_data = json.dumps(json_string)
@@ -194,7 +197,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
             # Server will only send the chunks that client is requesting for
             # open file again and load requested chuncks by offset and send it over to client
             last_chunk = ''
-            with open(File_path) as f:
+            with open(File_path,'rb') as f:
                 for offset in offset_list:
                     f.seek(offset)
                     chunk = f.read(BLOCK_SIZE)
@@ -214,10 +217,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
                         continue
                     else:
                         #print("send chunck ", chunk,'end')
-                        connection_socket.sendall(chunk.encode())
+                        connection_socket.sendall(chunk)
                 if last_chunk != '':
                     #print("send last chunck ", last_chunk)
-                    connection_socket.sendall(last_chunk.encode())
+                    connection_socket.sendall(last_chunk)
 
 
     elif client_option == "upload":
@@ -260,10 +263,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
             else:
                 # assume the data_chunk_list has all the missing data in order
                 # 
-                list_to_write.append(data_chunk_list[ith_chunk_in_data_chunk_list])
+                list_to_write.append(base64.b64decode(data_chunk_list[ith_chunk_in_data_chunk_list]))
                 ith_chunk_in_data_chunk_list += 1
 
-        with open("Updated_file"+file_name,"w") as f:
+        with open("Updated_file"+file_name,"wb") as f:
             for block in list_to_write:
                 f.write(block)
 
