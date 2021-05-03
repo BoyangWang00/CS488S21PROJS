@@ -159,7 +159,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     # Necessary? create str from json-like-Python dict
     str_data = json.dumps(json_string)
     # send entire buffer, sendto() is only for UDP datagram
-    print("String data: ", str_data)
+    #print("String data: ", str_data)
     # need to append -1 by the end of string
     connection_socket.sendall(str_data.encode())
     # client wants to either upload or download
@@ -230,32 +230,32 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
             # call a while loop to receve all the data send by server,
             # if server reach to EOF, serversocket.recv() will return 0, break the loop
             data = connection_socket.recv(1024)  # how many B recv?
-            print("recevied data is ", data)
+            #print("recevied data is ", data)
             #print("data is ", data)
             #print("last two digit is: ",data.decode()[-2:])
             server_received_data += data
             if data.decode()[-2:] == '-1':  # end of data to receive
-                print("we recevied the last chunk")
+                #print("we recevied the last chunk")
                 break
         # translate data into a dictionary {'data_list_to_send':data_list_to_send, 'new_file_list.chunks':new_file_list.chunks}
-        print("the string is :", server_received_data.decode())
+        #print("the string is :", server_received_data.decode())
         json_dict = json.loads(server_received_data[:-2].decode())
 
         data_chunk_list = json_dict.get("data_list_to_send")
-        print("data_chunk_list", data_chunk_list)
+        #print("data_chunk_list", data_chunk_list)
         hash_list = Chunks()
         translate_from_list(hash_list, json_dict.get("new_file_list.chunks"))
 
-        print("hash_list", hash_list.chunks)
+        #print("hash_list", hash_list.chunks)
 
         list_to_write = []
         ith_chunk_in_data_chunk_list = 0
         for block in hash_list.chunks:
             # Get the Index
             index = hash_list.get_offset(block.md5) / BLOCK_SIZE
-            print("Index of {} is {}", block, index)
+            print("Index of {} is {}".format(block, index))
             chunkList.append([index, block])
-            print("Chunk List to Write is: ", chunkList)
+            #print("Chunk List to Write is: ", chunkList)
             # if block.md5 in [items for items in chunkList.chunks]:
             #     # open the file and read chunk data; append data to list_to_write
             #     offset = hash_list.get_offset(block.md5)
@@ -271,7 +271,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
             #     ith_chunk_in_data_chunk_list += 1
 
         with open("Updated_file"+file_name, "w") as f:
+            print("Uploading file....")
+            #print("Chunk List to Write is: ", chunkList)
             for block in chunkList:
+                #print("Block:", block)
                 f.write(block)
 
         os.rename("Updated_file"+file_name, file_name)
