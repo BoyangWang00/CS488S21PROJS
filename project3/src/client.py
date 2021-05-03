@@ -6,10 +6,14 @@ import sys
 import os
 import json
 import time
+import nacl.secret
+import nacl.utils
+from nacl.public import PrivateKey, Box
+from nacl.encoding import Base64Encoder
 
 # Client has old file β
 BLOCK_SIZE = 36
-
+clientSecretKey = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
 # Hasher
 # Helper functions
 # ----------------
@@ -94,26 +98,26 @@ def checksums_file(fn):
     """
     fn_offset = 0
     chunks = Chunks()
-    global key, nonce = retrieveClientKey()
     with open(fn) as f:
         while True:
-            chunk = f.read(BLOCK_SIZE)
-            # Send client public key
-            clientBox = nacl.secret.SecretBox(key)
-            # Encrypt Box
-            encrypted = clientBox.encrypt(chunk, nonce)
-            # Receiving the encryptedBox
-            #serverMessage = serverBox.decrypt(box)
-            #serverMessage = serverMessage.decode('utf-8')
-            #print()
+            chunk = f.read(BLOCK_SIZE) #raw data, String type
+
+            chunk = bytes(chunk, 'utf-8')
+            #put raw data in the box:
+            clientBox = nacl.secret.SecretBox(clientSecretKey) # Send client public k
+            nonce = b'w\x85St\xbdRd#\xb3\x10h#[\xbd\xbd\xc5\x13\x94\x9f\x84\xc5\\\x91C' #nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
+            print(type(nonce))
+            encrypted_box = clientBox.encrypt(chunk, nonce)
+            #ctext = encrypted.ciphertext
 
             if not chunk:
                 break
 
+            #Turn encrypted box into hash and put hash into list
             chunks.append(
                 Signature(
-                    adler32=adler32_chunk(encrypted.encode()),
-                    md5=md5_chunk(encrypted.encode()),
+                    adler32=adler32_chunk(encrypted_box),
+                    md5=md5_chunk(encrypted_box),
                     offset=fn_offset
                 )
             )
@@ -121,6 +125,10 @@ def checksums_file(fn):
             fn_offset += BLOCK_SIZE
 
         return chunks
+
+
+# TODO: FINISH THIS FUNCTION
+# reconstruct the NEW file by using OLD file, OLD_TEMP file and checksums list received from server
 
 def reconstruct_file(OLD, TEMP_LOG, server_list, old_file_list):
     #print("start construct the file")
@@ -172,28 +180,6 @@ def translate_from_Json(string):
     #print("return_chunk is ", local_chunks)
     return local_chunks
 
-# Assigns client key and nonce
-def retrieveClientKey():
-    if not os.path.exists(clientInfo):
-    # if exists, write to clientInfo file and return key and nonce
-        with open(clientInfo, 'w'):
-            assert os.path.exists(clientInfo)
-            pass
-    #write to clientInfo file
-        with open(clientInfo, 'r+') as clientInfo:
-            key = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
-            nonce = nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
-            key_nonce = (key, nonce)
-            clientInfo.write(key_nonce.decode())
-    else:
-     if os.path.exists(clientInfo):
-        with open(clientInfo, 'r+') as clientInfo:
-            key, nonce = clientInfo.read(-1)
-            key_nonce = (key, nonce)
-    return key_nonce
-
-
-
 # Client pass in server @ and port in commandline [1][2]
 serverName = sys.argv[1]
 serverPort = int(sys.argv[2])
@@ -203,25 +189,21 @@ option = sys.argv[3] #down or upload
 #des_path_old = sys.argv[5]
 
 
-#Encryption: secret key, box
-#key = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
-#box = nacl.secret.SecretBox(key)
-#nonce = 9
-
 #Take user input
 src_path_new = input("Enter source file path:")
 des_path_old = input("Enter destination file path:")
 old_file_name = os.path.basename(des_path_old)
 directry_path = os.path.dirname(des_path_old)
 temp_log_path = os.path.join(directry_path, old_file_name+'TEMP_LOG')
-clientInfo = os.path.basename(des_path_old)
+
+
+
 if option == 'download':
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
         #print("client is trying to connect to ", serverPort)
         clientSocket.connect(serverAddress)
 
-        #encrypted = box.encrypt(message, nonce)
         # Client needs to send server a signal that it wants to update
         signal = (src_path_new, option)
         signal = " ".join(map(str,signal))
@@ -233,13 +215,16 @@ if option == 'download':
         while True:
             # call a while loop to receve all the data send by server,
             # if server reach to EOF, clientSocket.recv() will return '-1', break the loop
-            data = clientSocket.recv(1024)  # how many B recv?
+            data = clientSocket.recv(1024)
             #print("data is ", data)
             #print("last two digit is: ",data.decode()[-2:])
+            print('data ', data)
             received_data += data
             if data.decode()[-2:] == '-1':
                 break
         #print("The whole received data is ",received_data)
+
+        #TODO: Decrypt each box
 
     # decode from the server and you get the list of hashes
     # need to re-construct Chunks object based on json string that we received
@@ -390,7 +375,6 @@ if option == 'download':
     print(des_path_old, "download completed")
     exit()
 elif option == 'upload':
-    #print("Sorry, we don't support upload now")
     #send upload request to server
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientSocket:
         #print("client is trying to connect to ", serverPort)
@@ -402,11 +386,11 @@ elif option == 'upload':
         signal = " ".join(map(str,signal))
         print("Signal is ", signal)
         clientSocket.sendall(signal.encode())
-        #print("inside upload with statement")
+        print("inside upload with statement")
         received_data = b''
 
         while True:
-            #print("inside while true statement")
+            print("inside while true statement")
             data = clientSocket.recv(1024)
             #clientSocket.sendall(option)
             print("Data is ", data)
@@ -424,32 +408,25 @@ elif option == 'upload':
         data_list_to_send = []
         offset = 0
         new_file_name = os.path.basename(src_path_new) #(?)
-        new_file_list = checksums_file(new_file_name, clientInfo) #client's new longer hashlist
+        new_file_list = checksums_file(new_file_name) #client's new longer hashlist
 
-        #print("New file name is ", new_file_name)
-        #print("New file list is ", new_file_list)
-
-        key, nonce = retrieveClientKey(clientInfo)
+        print("New file name is ", new_file_name)
+        print("New file list is ", new_file_list)
 
         #Create a list of actual data blocks that need to be sent over to server
         for block in new_file_list.chunks:
-            #print("inside for block in new_file_list loop")
-            if block.md5 not in [items.md5 for items in localChecksums.chunks]:
-                #new block not in old list
+            print("inside for block in new_file_list loop")
+            if block.md5 not in [items.md5 for items in localChecksums.chunks]: #new block not in old list
                 with open(src_path_new) as f:
                     f.seek(block.offset)
                     chunk = f.read(BLOCK_SIZE)
-                    # Create client box with key
-                    clientBox = nacl.secret.SecretBox(key)
-                    # Encrypt Box with chunk and nonce
-                    encrypted = clientBox.encrypt(chunk, nonce)
 
                     if not chunk:
-                        # if no data
                         break
-                    data_list_to_send.append(encrypted)
-        print(data_list_to_send)
-        #if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
+                    data_list_to_send.append(chunk)
+
+
+                #if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
 
         #Send the data blocks and offset list to reconstruct
         to_send = {'data_list_to_send':data_list_to_send, 'new_file_list.chunks':new_file_list.chunks}
