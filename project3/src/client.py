@@ -13,7 +13,7 @@ from nacl.encoding import Base64Encoder
 import base64
 
 # Client has old file β
-DATA_BLOCK = 36
+DATA_BLOCK = 4
 HEADER_SIZE = 40
 BLOCK_SIZE = DATA_BLOCK+HEADER_SIZE
 clientSecretKey = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
@@ -77,6 +77,10 @@ class Chunks(object):
     def get_offset(self, md5):
         md5_offset = {sig.md5: sig.offset for sig in self.chunks}
         return md5_offset.get(md5)
+
+    def get_sig(self, md5):
+        sig_dict = {sig.md5: sig for sig in self.chunks}
+        return sig_dict.get(md5)
 
     def copy(self):
         new_chunck = Chunks()
@@ -170,6 +174,7 @@ def reconstruct_file(OLD, TEMP_LOG, server_list, old_file_list, client_path):
     clientBox = nacl.secret.SecretBox(key)
     if os.path.exists(TEMP_LOG):
         temp_log_list = checksums_file_from_encryped(TEMP_LOG)
+    print("?????temp_log_list chunks are ", temp_log_list.chunks)
 
     old = open(OLD, 'r')
     if os.path.exists(TEMP_LOG):
@@ -181,7 +186,7 @@ def reconstruct_file(OLD, TEMP_LOG, server_list, old_file_list, client_path):
             if signature.md5 in [items.md5 for items in old_file_list.chunks]:
                 # find block with offset and write out to new_temp file
                 offset = old_file_list.get_offset(signature.md5)
-                #print('offset of old file', offset)
+                print('offset of old file', offset)
                 old.seek(offset)
                 data = old.read(DATA_BLOCK)
                 print('data from old file', data)
@@ -190,7 +195,7 @@ def reconstruct_file(OLD, TEMP_LOG, server_list, old_file_list, client_path):
                 if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
                     # find block with offset and write out to new_temp file
                     offset = temp_log_list.get_offset(signature.md5)
-                    #print('offset of temp_log', offset)
+                    print('offset of temp_log', offset)
                     temp_log.seek(offset)
                     data = temp_log.read(BLOCK_SIZE)
                     decrypt_data = clientBox.decrypt(data)
@@ -314,15 +319,18 @@ if option == 'download':
 
         # Make a copy of the checksums List = IE. localChecksums
         localChecksums = checksums.copy()
+        print("local check sums are:", localChecksums.chunks)
         list_to_write = []
         offset = 0
         old_file_list = Chunks()
         checksums_of_client_file = checksums_file_from_raw(old_file_name ,client_path)
+        print("checksums_of_client_file",checksums_of_client_file.chunks)
 
-        for block in localChecksums.chunks:
+        for block in checksums.chunks:
+            print("!!!!!!!!!!!!!current block is",block)
             if block.md5 in [items.md5 for items in checksums_of_client_file.chunks]:
                 localChecksums.remove(block)
-                old_file_list.append(block)
+                old_file_list.append(checksums_of_client_file.get_sig(block.md5))
 
         # with open(des_path_old) as f:
         #     while True:
@@ -354,7 +362,7 @@ if option == 'download':
                 #     offset += 1  # if no match
                 #     f.seek(offset)
 
-            shopping_list_len_before_templog = len(localChecksums.chunks)
+        shopping_list_len_before_templog = len(localChecksums.chunks)
 
     # TODO: need to add code to check whether there is a temp_log file under current directry.
     # if there is, which means the download was interrupted last time, we need to check both OLD file
@@ -362,7 +370,7 @@ if option == 'download':
         try:
             checksums_of_temp_file = checksums_file_from_encryped(old_file_name+'TEMP_LOG')
 
-            for block in localChecksums.chunks:
+            for block in checksums.chunks:
                 if block.md5 in [items.md5 for items in checksums_of_temp_file.chunks]:
                     localChecksums.remove(block)
 
@@ -402,6 +410,7 @@ if option == 'download':
     # client.sendto(server)
         json_format = {'chunks': localChecksums.chunks,
                        'chunk_sigs': localChecksums.chunk_sigs}
+        print("shopping list is: ",json_format)
         request_list = json.dumps(json_format)
         clientSocket.sendall(request_list.encode())
     # singnal to infor client that no more data is sent

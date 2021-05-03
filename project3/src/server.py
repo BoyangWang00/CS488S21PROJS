@@ -11,7 +11,7 @@ import base64
 
 
 # Server has new file α
-DATA_BLOCK = 36
+DATA_BLOCK = 4
 HEADER_SIZE = 40
 BLOCK_SIZE = DATA_BLOCK+HEADER_SIZE
 
@@ -216,7 +216,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
                         last_chunk = chunk
                         continue
                     else:
-                        #print("send chunck ", chunk,'end')
+                        print("send chunck ", chunk,'end')
                         connection_socket.sendall(chunk)
                 if last_chunk != '':
                     #print("send last chunck ", last_chunk)
@@ -256,7 +256,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
             if block.md5 in [items.md5 for items in chunkList.chunks]: 
                 #open the file and read chunk data; append data to list_to_write
                 offset = hash_list.get_offset(block.md5)
-                with open(File_path) as f:
+                with open(File_path,'rb') as f:
                     f.seek(offset)
                     chunk_data = f.read(BLOCK_SIZE)
                     list_to_write.append(chunk_data)
