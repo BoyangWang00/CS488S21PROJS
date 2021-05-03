@@ -85,25 +85,23 @@ def checksums_file(fn):
     """
     fn_offset = 0
     chunks = Chunks()
-    tempList = []
     with open(fn) as f:
         while True:
             chunk = f.read(BLOCK_SIZE)
             if not chunk:
                 break
 
-            # chunks.append(
-            #     Signature(
-            #         adler32=adler32_chunk(chunk.encode()),
-            #         md5=md5_chunk(chunk.encode()),
-            #         offset=fn_offset
-            #     )
-            # )
+            chunks.append(
+                Signature(
+                    adler32=adler32_chunk(chunk.encode()),
+                    md5=md5_chunk(chunk.encode()),
+                    offset=fn_offset
+                )
+            )
 
-            # fn_offset += BLOCK_SIZE
-            tempList.append(chunk)
+            fn_offset += BLOCK_SIZE
 
-        return tempList
+        return chunks
 
 
 def translate_from_Json(chunks, string):
@@ -151,7 +149,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
     # Call checksumfiles to make the NEW block list
     chunkList = checksums_file(File_path)
     #print("chunklist is ",chunkList)
-    json_string = {'chunks': chunkList}
+    json_string = {'chunks': chunkList.chunks,
+                   'chunk_sigs': chunkList.chunk_sigs}
     # print("json_string",json_string)
 
     # Send checksums_file (which is the hashed list of the file) to client
@@ -246,32 +245,27 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
         hash_list = Chunks()
         translate_from_list(hash_list, json_dict.get("new_file_list.chunks"))
 
-        print("hash_list", hash_list.chunks)
+        print("hash_list", hash_list)
 
         list_to_write = []
         ith_chunk_in_data_chunk_list = 0
         for block in hash_list.chunks:
-            # Get the Index
-            index = hash_list.get_offset(block.md5) / BLOCK_SIZE
-            print("Index of {} is {}", block, index)
-            chunkList.append([index, block])
-            print("Chunk List to Write is: ", chunkList)
-            # if block.md5 in [items for items in chunkList.chunks]:
-            #     # open the file and read chunk data; append data to list_to_write
-            #     offset = hash_list.get_offset(block.md5)
-            #     with open(File_path) as f:
-            #         f.seek(offset)
-            #         chunk_data = f.read(BLOCK_SIZE)
-            #         list_to_write.append(chunk_data)
-            # else:
-            #     # assume the data_chunk_list has all the missing data in order
-            #     #
-            #     list_to_write.append(
-            #         data_chunk_list[ith_chunk_in_data_chunk_list])
-            #     ith_chunk_in_data_chunk_list += 1
+            if block.md5 in [items.md5 for items in chunkList.chunks]:
+                # open the file and read chunk data; append data to list_to_write
+                offset = hash_list.get_offset(block.md5)
+                with open(File_path) as f:
+                    f.seek(offset)
+                    chunk_data = f.read(BLOCK_SIZE)
+                    list_to_write.append(chunk_data)
+            else:
+                # assume the data_chunk_list has all the missing data in order
+                #
+                list_to_write.append(
+                    data_chunk_list[ith_chunk_in_data_chunk_list])
+                ith_chunk_in_data_chunk_list += 1
 
         with open("Updated_file"+file_name, "w") as f:
-            for block in chunkList:
+            for block in list_to_write:
                 f.write(block)
 
         os.rename("Updated_file"+file_name, file_name)
