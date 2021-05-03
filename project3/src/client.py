@@ -174,6 +174,7 @@ def reconstruct_file(OLD, TEMP_LOG, server_list, old_file_list, client_path):
 
 def translate_from_Json(string):
     local_chunks = Chunks()
+    print("Json Loads String: ", string)
     json_string = json.loads(string)
     for sigs in json_string.get("chunks"):
         local_chunks.append(
@@ -267,7 +268,8 @@ if option == 'download':
 
     # decode from the server and you get the list of hashes
     # need to re-construct Chunks object based on json string that we received
-        checksums = translate_from_Json(received_data.decode())
+        checksum_string = received_data.decode()
+        checksums = translate_from_Json(checksum_string[:-2])
         # print("here is the checksums!!!!!!",checksums)
         json_string = {'chunks': checksums.chunks,
                        'chunk_sigs': checksums.chunk_sigs}
@@ -283,35 +285,45 @@ if option == 'download':
         localChecksums = checksums.copy()
         list_to_write = []
         offset = 0
+        key, nonce = retrieveClientKey(client_path)
         old_file_list = Chunks()
         with open(des_path_old) as f:
             while True:
                 chunk = f.read(BLOCK_SIZE)
                 # list_to_write.append(chunk)
                 # Until EOF
+                print("Base64 Decoded: ", base64.b64decode(key))
+                clientBox = nacl.secret.SecretBox(base64.b64decode(key))
+                # Encrypt Box
+                print("Nonce is ", nonce)
+                print("chunk is ", chunk)
+                encrypted = clientBox.encrypt(
+                    chunk.encode(), base64.b64decode(nonce))
                 if not chunk:
                     break
-                # Hashes and then checks it against the list that the server sent
-                chunk_number = checksums.get_chunk(chunk.encode())
+                # Make the boxes here and then we can figure out the adler32 and compare
+              # Hashes and then checks it against the list that the server sent
+
+                chunk_number = checksums.get_chunk(encrypted)
 
                # If it exists then remove it from the localChecksums
-                if chunk_number is not None:
-                    # print(chunk_number)
-                    # print(chunk)
+            if chunk_number is not None:
+                # print(chunk_number)
+                # print(chunk)
 
-                    localChecksums.remove(checksums.__getitem__(chunk_number))
-                    old_file_list.append(
-                        Signature(
-                            adler32=adler32_chunk(chunk.encode()),
-                            md5=md5_chunk(chunk.encode()),
-                            offset=offset
-                        )
+                localChecksums.remove(checksums.__getitem__(chunk_number))
+                old_file_list.append(
+                    Signature(
+                        adler32=adler32_chunk(chunk.encode()),
+                        md5=md5_chunk(chunk.encode()),
+                        offset=offset
                     )
-                    offset += BLOCK_SIZE
+                )
+                offset += BLOCK_SIZE
                 # Just offset by one, read from that part of the file, and then move on
-                else:
-                    offset += 1  # if no match
-                    f.seek(offset)
+            else:
+                offset += 1  # if no match
+                f.seek(offset)
 
             shopping_list_len_before_templog = len(localChecksums.chunks)
 
@@ -456,6 +468,7 @@ elif option == 'upload':
         # client's new longer hashlist
         print("New File Path name: ", new_file_name)
         new_file_list = checksums_file(new_file_name, client_path)
+        print("Hashed Data to send: ", new_file_list.chunks)
 
         # print("New file name is ", new_file_name)
         # print("New file list is ", new_file_list)
@@ -485,7 +498,7 @@ elif option == 'upload':
                         # if no data
                         break
                     data_list_to_send.append(b64_encrypted.decode())
-        print(data_list_to_send)
+        print("Data List to send is: ", data_list_to_send)
         # if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
 
         # Send the data blocks and offset list to reconstruct
