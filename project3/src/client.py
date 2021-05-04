@@ -15,7 +15,7 @@ import base64
 # Client has old file β
 DATA_BLOCK = 4
 HEADER_SIZE = 40
-BLOCK_SIZE = DATA_BLOCK+HEADER_SIZE
+BLOCK_SIZE = DATA_BLOCK+HEADER_SIZE+4
 clientSecretKey = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
 # Hasher
 # Helper functions
@@ -120,6 +120,7 @@ def checksums_file_from_raw(fn, client_path):
             print("chunk is ", chunk)
             encrypted = clientBox.encrypt(
                 chunk.encode(), nonce)
+            encrypted_with_header = b'0000'+encrypted
             # Receiving the encryptedBox
             #serverMessage = serverBox.decrypt(box)
             #serverMessage = serverMessage.decode('utf-8')
@@ -131,8 +132,8 @@ def checksums_file_from_raw(fn, client_path):
             # Turn encrypted box into hash and put hash into list
             chunks.append(
                 Signature(
-                    adler32=adler32_chunk(encrypted),
-                    md5=md5_chunk(encrypted),
+                    adler32=adler32_chunk(encrypted_with_header),
+                    md5=md5_chunk(encrypted_with_header),
                     offset=fn_offset
                 )
             )
@@ -198,9 +199,13 @@ def reconstruct_file(OLD, TEMP_LOG, server_list, old_file_list, client_path):
                     print('offset of temp_log', offset)
                     temp_log.seek(offset)
                     data = temp_log.read(BLOCK_SIZE)
-                    decrypt_data = clientBox.decrypt(data)
-                    print("data from temp_log", decrypt_data.decode())
-                    constructer.write(decrypt_data.decode())
+                    useful_len = int(data[:4].decode())
+                    print("useful len is", useful_len)
+                    if useful_len == 0:
+                        useful_len = DATA_BLOCK
+                    decrypt_data = clientBox.decrypt(data[4:])
+                    print("data from temp_log", decrypt_data[4:].decode())
+                    constructer.write(decrypt_data.decode()[:useful_len])
 
     old.close()
     if os.path.exists(TEMP_LOG):
