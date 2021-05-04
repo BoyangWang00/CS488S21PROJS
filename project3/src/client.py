@@ -268,11 +268,7 @@ if option == 'download':
 
     # decode from the server and you get the list of hashes
     # need to re-construct Chunks object based on json string that we received
-<<<<<<< HEAD
-        checksum_string = recieve_data.decode()
-=======
         checksum_string = received_data.decode()
->>>>>>> 27b581113388aa3502511fa5b518d8e039aa28e1
         checksums = translate_from_Json(checksum_string[:-2])
         # print("here is the checksums!!!!!!",checksums)
         json_string = {'chunks': checksums.chunks,
@@ -291,37 +287,6 @@ if option == 'download':
         offset = 0
         key, nonce = retrieveClientKey(client_path)
         old_file_list = Chunks()
-<<<<<<< HEAD
-        # below: send server info to download file
-        # use checksums_file()
-        with open(des_path_old) as f:
-            while True:
-
-                chunk = f.read(BLOCK_SIZE)
-                # list_to_write.append(chunk)
-                # Until EOF
-                if not chunk:
-                    break
-                # Hashes and then checks it against the list that the server sent
-                chunk_number = checksums.get_chunk(chunk.encode())
-
-               # If it exists then remove it from the localChecksums
-                if chunk_number is not None:
-                    #change localchecksums to checksums_file() file
-                    localChecksums.remove(checksums.__getitem__(chunk_number))
-                    old_file_list.append(
-                        Signature(
-                            adler32=adler32_chunk(chunk.encode()),
-                            md5=md5_chunk(chunk.encode()),
-                            offset=offset
-                        )
-                    )
-                    offset += BLOCK_SIZE
-                # Just offset by one, read from that part of the file, and then move on
-                else:
-                    offset += 1  # if no match
-                    f.seek(offset)
-=======
         with open(des_path_old) as f:
             while True:
                 chunk = f.read(BLOCK_SIZE)
@@ -359,7 +324,6 @@ if option == 'download':
             else:
                 offset += 1  # if no match
                 f.seek(offset)
->>>>>>> 27b581113388aa3502511fa5b518d8e039aa28e1
 
             shopping_list_len_before_templog = len(localChecksums.chunks)
 
@@ -504,10 +468,7 @@ elif option == 'upload':
         # client's new longer hashlist
         print("New File Path name: ", new_file_name)
         new_file_list = checksums_file(new_file_name, client_path)
-<<<<<<< HEAD
-=======
         print("Hashed Data to send: ", new_file_list.chunks)
->>>>>>> 27b581113388aa3502511fa5b518d8e039aa28e1
 
         # print("New file name is ", new_file_name)
         # print("New file list is ", new_file_list)
