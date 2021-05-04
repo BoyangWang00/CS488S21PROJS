@@ -174,7 +174,7 @@ def reconstruct_file(OLD, TEMP_LOG, server_list, old_file_list, client_path):
     clientBox = nacl.secret.SecretBox(key)
     if os.path.exists(TEMP_LOG):
         temp_log_list = checksums_file_from_encryped(TEMP_LOG)
-    print("?????temp_log_list chunks are ", temp_log_list.chunks)
+        print("?????temp_log_list chunks are ", temp_log_list.chunks)
 
     old = open(OLD, 'r')
     if os.path.exists(TEMP_LOG):
@@ -329,6 +329,8 @@ if option == 'download':
         for block in checksums.chunks:
             print("!!!!!!!!!!!!!current block is",block)
             if block.md5 in [items.md5 for items in checksums_of_client_file.chunks]:
+                print("block in old file")
+                print("md5 list is ",[items.md5 for items in checksums_of_client_file.chunks])
                 localChecksums.remove(block)
                 old_file_list.append(checksums_of_client_file.get_sig(block.md5))
 
@@ -519,6 +521,44 @@ elif option == 'upload':
         #print("New file list is ", new_file_list)
 
         key1, nonce1 = retrieveClientKey(client_path)
+        clientBox = nacl.secret.SecretBox(key1)
+
+        #open src_path new and check whether the block is in the localChecksums list
+        #if yes, move to next block
+        #if no, shift by 1 byte and check again
+
+        # insert_string = ''
+        # len_of_insertion = 0
+        # offset = 0
+
+        # with open(src_path_new) as src_file:
+        #     while True:
+        #         chunk = src_file.read(DATA_BLOCK)
+        #         if not chunck:
+        #             break
+        #         encrypted = clientBox.encrypt(chunk.encode(), nonce1)
+        #         #first four bytes will be header
+        #         #if header != b'0000', then number in header = useful data length
+        #         encrypted_with_header = b'0000'+encrypted
+        #         chunk_number = localChecksums.get_chunk(encrypted_with_header)
+        #         if chunk_number is not None:
+        #             if insert_string != '':
+        #                 #padding insert string with 0 and header
+        #                 pad_insert_string = str(len_of_insertion).encode()+chunk+b'0'*(DATA_BLOCK-len_of_insertion)
+        #                 encrypted = clientBox.encrypt(pad_insert_string.encode(), nonce1)
+        #                 data_list_to_send.append(str(len_of_insertion).encode()+chunk+b'0'*(DATA_BLOCK-len_of_insertion))
+        #             insert_string = ''
+        #             len_of_insertion = 0
+        #             offset += DATA_BLOCK
+        #         else:
+        #             offset += 1
+        #             len_of_insertion +=1
+        #             insert_string = insert_string + chunk[0]
+
+
+            
+
+
 
         # Create a list of actual data blocks that need to be sent over to server
         for block in new_file_list.chunks:
@@ -533,7 +573,6 @@ elif option == 'upload':
                     #print("Key Type is: ", type(key))
                     #print("Nonce Value is: ", base64.b64decode(nonce1))
                     #print("Nonce Type is: ", type(nonce))
-                    clientBox = nacl.secret.SecretBox(key1)
                     # Encrypt Box with chunk and nonce
                     encrypted = clientBox.encrypt(
                         chunk.encode(), nonce1)

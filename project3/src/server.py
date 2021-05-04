@@ -248,23 +248,28 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serverSocket:
         hash_list = Chunks()
         translate_from_list(hash_list,json_dict.get("new_file_list.chunks"))
 
-        print("hash_list", hash_list)
+        print("hash_list", hash_list.chunks)
 
         list_to_write = []
         ith_chunk_in_data_chunk_list = 0
         for block in hash_list.chunks:
             if block.md5 in [items.md5 for items in chunkList.chunks]: 
                 #open the file and read chunk data; append data to list_to_write
-                offset = hash_list.get_offset(block.md5)
+                offset = chunkList.get_offset(block.md5)
+                print("offset is ",offset)
                 with open(File_path,'rb') as f:
                     f.seek(offset)
                     chunk_data = f.read(BLOCK_SIZE)
+                    print("get data from old server file ", chunk_data)
                     list_to_write.append(chunk_data)
             else:
                 # assume the data_chunk_list has all the missing data in order
                 # 
+                print("get data from data_chunk_list from client")
                 list_to_write.append(base64.b64decode(data_chunk_list[ith_chunk_in_data_chunk_list]))
+                print("length is ",len(base64.b64decode(data_chunk_list[ith_chunk_in_data_chunk_list])))
                 ith_chunk_in_data_chunk_list += 1
+        print("list to write",list_to_write)
 
         with open("Updated_file"+file_name,"wb") as f:
             for block in list_to_write:
