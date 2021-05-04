@@ -255,6 +255,13 @@ def retrieveClientKey(client_path):
                 #key_nonce = (key, nonce)
     return key_nonce
 
+def append_to_new_file_list(list,encrypted_data,offset):
+    list.append(Signature(
+                    adler32=adler32_chunk(encrypted_data),
+                    md5=md5_chunk(encrypted_data),
+                    offset=offset))
+
+
 
 # Client pass in server @ and port in commandline [1][2]
 serverName = sys.argv[1]
@@ -515,7 +522,8 @@ elif option == 'upload':
         new_file_name = os.path.basename(src_path_new)  # (?)
         # client's new longer hashlist
         print("New File Path name: ", new_file_name)
-        new_file_list = checksums_file_from_raw(new_file_name, client_path)
+        #new_file_list = checksums_file_from_raw(new_file_name, client_path)
+        new_file_list = Chunks()
 
         #print("New file name is ", new_file_name)
         #print("New file list is ", new_file_list)
@@ -527,61 +535,83 @@ elif option == 'upload':
         #if yes, move to next block
         #if no, shift by 1 byte and check again
 
-        # insert_string = ''
-        # len_of_insertion = 0
-        # offset = 0
+        insert_string = ''
+        len_of_insertion = 0
+        offset = 0
 
-        # with open(src_path_new) as src_file:
-        #     while True:
-        #         chunk = src_file.read(DATA_BLOCK)
-        #         if not chunck:
-        #             break
-        #         encrypted = clientBox.encrypt(chunk.encode(), nonce1)
-        #         #first four bytes will be header
-        #         #if header != b'0000', then number in header = useful data length
-        #         encrypted_with_header = b'0000'+encrypted
-        #         chunk_number = localChecksums.get_chunk(encrypted_with_header)
-        #         if chunk_number is not None:
-        #             if insert_string != '':
-        #                 #padding insert string with 0 and header
-        #                 pad_insert_string = str(len_of_insertion).encode()+chunk+b'0'*(DATA_BLOCK-len_of_insertion)
-        #                 encrypted = clientBox.encrypt(pad_insert_string.encode(), nonce1)
-        #                 data_list_to_send.append(str(len_of_insertion).encode()+chunk+b'0'*(DATA_BLOCK-len_of_insertion))
-        #             insert_string = ''
-        #             len_of_insertion = 0
-        #             offset += DATA_BLOCK
-        #         else:
-        #             offset += 1
-        #             len_of_insertion +=1
-        #             insert_string = insert_string + chunk[0]
+        with open(src_path_new) as src_file:
+            while True:
+                chunk = src_file.read(DATA_BLOCK)
+                print("this chunk is ", chunk)
+                if not chunk:
+                    break
+                encrypted = clientBox.encrypt(chunk.encode(), nonce1)
+                #first four bytes will be header
+                #if header != b'0000', then number in header = useful data length
+                encrypted_with_header = b'0000'+encrypted
+                chunk_number = localChecksums.get_chunk(encrypted_with_header)
+                print("chunk number is ",chunk_number)
+                if chunk_number is not None:
+                    if insert_string != '':
+                        #padding insert string with 0 and header
+                        pad_insert_string = insert_string+'0'*(DATA_BLOCK-len_of_insertion)
+                        encrypted_short_str = clientBox.encrypt(pad_insert_string.encode(), nonce1)
+                        header_zero_number  = 4-len(str(len_of_insertion))
+                        encrypted_short_str_with_header =b'0'*header_zero_number+str(len_of_insertion).encode()+encrypted_short_str
+                        data_list_to_send.append(base64.b64encode(encrypted_short_str_with_header).decode())
+                        append_to_new_file_list(new_file_list, encrypted_short_str_with_header, offset-len_of_insertion )
+                        print("insert a block with pading",pad_insert_string,'|', encrypted_short_str,'|', encrypted_short_str_with_header)
+                        insert_string = ''
+                        len_of_insertion = 0
+
+                    append_to_new_file_list(new_file_list,encrypted_with_header,offset)
+                    print("an old block in server file")
+
+                    offset += DATA_BLOCK
+                    src_file.seek(offset)
+
+
+                else:
+                    offset += 1
+                    src_file.seek(offset)
+                    len_of_insertion +=1
+                    insert_string = insert_string + chunk[0]
+                    if len_of_insertion == DATA_BLOCK:
+                        print("insert one new block", insert_string)
+                        encrypted = clientBox.encrypt(insert_string.encode(), nonce1)
+                        encrypted_with_header=b'0000'+encrypted
+                        data_list_to_send.append(base64.b64encode(encrypted_with_header).decode())
+                        append_to_new_file_list(new_file_list, encrypted_with_header,offset-DATA_BLOCK )
+                        insert_string = ''
+                        len_of_insertion = 0
 
 
             
 
 
 
-        # Create a list of actual data blocks that need to be sent over to server
-        for block in new_file_list.chunks:
-            #print("inside for block in new_file_list loop")
-            if block.md5 not in [items.md5 for items in localChecksums.chunks]:
-                # new block not in old list
-                with open(src_path_new) as f:
-                    f.seek(block.offset)
-                    chunk = f.read(DATA_BLOCK)
-                    # Create client box with key
-                    #print("Key Value is: ", base64.b64decode(key1))
-                    #print("Key Type is: ", type(key))
-                    #print("Nonce Value is: ", base64.b64decode(nonce1))
-                    #print("Nonce Type is: ", type(nonce))
-                    # Encrypt Box with chunk and nonce
-                    encrypted = clientBox.encrypt(
-                        chunk.encode(), nonce1)
-                    b64_encrypted = base64.b64encode(encrypted)
+        # # Create a list of actual data blocks that need to be sent over to server
+        # for block in new_file_list.chunks:
+        #     #print("inside for block in new_file_list loop")
+        #     if block.md5 not in [items.md5 for items in localChecksums.chunks]:
+        #         # new block not in old list
+        #         with open(src_path_new) as f:
+        #             f.seek(block.offset)
+        #             chunk = f.read(DATA_BLOCK)
+        #             # Create client box with key
+        #             #print("Key Value is: ", base64.b64decode(key1))
+        #             #print("Key Type is: ", type(key))
+        #             #print("Nonce Value is: ", base64.b64decode(nonce1))
+        #             #print("Nonce Type is: ", type(nonce))
+        #             # Encrypt Box with chunk and nonce
+        #             encrypted = clientBox.encrypt(
+        #                 chunk.encode(), nonce1)
+        #             b64_encrypted = base64.b64encode(encrypted)
 
-                    if not chunk:
-                        # if no data
-                        break
-                    data_list_to_send.append(b64_encrypted.decode())
+        #             if not chunk:
+        #                 # if no data
+        #                 break
+        #             data_list_to_send.append(b64_encrypted.decode())
         print(data_list_to_send)
         # if signature.md5 in [items.md5 for items in temp_log_list.chunks]:
 
@@ -597,7 +627,6 @@ elif option == 'upload':
         # client should receive "Upload is finished" and print it out
         finish_signal = clientSocket.recv(1024)
         print(finish_signal.decode())
-
 
 else:
     print("wrong option")

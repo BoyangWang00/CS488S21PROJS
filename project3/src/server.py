@@ -13,7 +13,7 @@ import base64
 # Server has new file α
 DATA_BLOCK = 4
 HEADER_SIZE = 40
-BLOCK_SIZE = DATA_BLOCK+HEADER_SIZE
+BLOCK_SIZE = DATA_BLOCK+HEADER_SIZE+4
 
 # Hasher
 # Helper functions
